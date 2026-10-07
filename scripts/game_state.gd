@@ -936,6 +936,102 @@ const ACTION_CARDS := [
 		},
 		"side_note": {"deep": "拦截带要占用沿岸农田与作业面，社区信任 -4"},
 	},
+	# ==================== 新增：7 张四季通用卡（2026-10-07）====================
+	# 每项指标各配一张正向/调节卡；定价按工程平衡口径（三档 = 0.5/1/2 倍价，
+	# 延迟按 1.00/0.85/0.70/0.55 折算，折后点/万落在现有卡 0.22~0.29 带内）。
+	# 科学依据与实测见《保卫鄱阳湖_手牌数值与顶部文本_v0.1.16》附录六。
+	{
+		"id": "eco_water_scheduling", "name": "生态水位联合调度", "category": "manage",
+		"season": "all",
+		"tags": ["补水调度", "水工调控"],
+		"desc": "联合调度五河水库群与湖口闸站，在枯水期加大下泄流量抬升湖区水位。",
+		"cost": 30,
+		"tiers": {
+			"basic":     {"effects": [{"metric": "water_level", "delta": 4, "delay": 1}]},
+			"effective": {"effects": [{"metric": "water_level", "delta": 8, "delay": 1}, {"metric": "vegetation", "delta": 2, "delay": 2}]},
+			"deep":      {"effects": [{"metric": "water_level", "delta": 15, "delay": 0}, {"metric": "vegetation", "delta": 4, "delay": 2}, {"metric": "community", "delta": -2, "delay": 0}]},
+		},
+		"side_note": {"deep": "大流量下泄要占用灌溉与发电用水，社区信任 -2"},
+	},
+	{
+		"id": "preseason_drawdown", "name": "汛前预泄腾库", "category": "manage",
+		"season": "all",
+		"tags": ["洪水调度", "水工调控"],
+		"desc": "汛前把湖库水位降到防洪限制水位腾出调蓄库容，湖滩出露晒滩促进苦草萌发。",
+		"cost": 20,
+		"tiers": {
+			"basic":     {"effects": [{"metric": "water_level", "delta": -8, "delay": 1}, {"metric": "vegetation", "delta": 5, "delay": 2}]},
+			"effective": {"effects": [{"metric": "water_level", "delta": -16, "delay": 1}, {"metric": "vegetation", "delta": 7, "delay": 2}]},
+			"deep":      {"effects": [{"metric": "water_level", "delta": -26, "delay": 1}, {"metric": "vegetation", "delta": 12, "delay": 1}, {"metric": "community", "delta": 2, "delay": 0}]},
+		},
+		"side_note": {"basic": "预泄留出库容，水位变化要等一回合才落到湖里"},
+	},
+	{
+		"id": "riparian_buffer", "name": "滨湖缓冲带与生态沟渠", "category": "ecology",
+		"season": "all",
+		"tags": ["水体治理", "生态修复"],
+		"desc": "在入湖河口与农田退水口建生态沟渠和挺水植物缓冲带，拦截氮磷面源。",
+		"cost": 30,
+		"tiers": {
+			"basic":     {"effects": [{"metric": "water_quality", "delta": 4, "delay": 1}]},
+			"effective": {"effects": [{"metric": "water_quality", "delta": 7, "delay": 1}, {"metric": "vegetation", "delta": 2, "delay": 1}]},
+			"deep":      {"effects": [{"metric": "water_quality", "delta": 13, "delay": 0}, {"metric": "vegetation", "delta": 4, "delay": 1}]},
+		},
+		"side_note": {"effective": "拦截带建成后逐步生效，延迟 1 回合"},
+	},
+	{
+		"id": "artificial_spawning_nest", "name": "人工鱼巢投放", "category": "manage",
+		"season": "all",
+		"tags": ["增殖放流", "栖息地营造"],
+		"desc": "在湖湾缓流区投放棕片与水草束鱼巢，提高鲤鲫与四大家鱼受精卵附着孵化率。",
+		"cost": 20,
+		"tiers": {
+			"basic":     {"effects": [{"metric": "fish", "delta": 4, "delay": 2}]},
+			"effective": {"effects": [{"metric": "fish", "delta": 6, "delay": 2}, {"metric": "water_quality", "delta": 2, "delay": 2}]},
+			"deep":      {"effects": [{"metric": "fish", "delta": 11, "delay": 1}, {"metric": "water_quality", "delta": 3, "delay": 2}, {"metric": "community", "delta": -1, "delay": 0}]},
+		},
+		"side_note": {"basic": "鱼巢需浸没一段时间才见效，延迟 2 回合"},
+	},
+	{
+		"id": "crab_control_replanting", "name": "控蟹护草与底质改良", "category": "ecology",
+		"season": "all",
+		"tags": ["生态修复", "物种防控"],
+		"desc": "围网阻隔并清除啃食幼苗的绒螯蟹幼蟹，配合底质改良重建沉水植物群落。",
+		"cost": 30,
+		"tiers": {
+			"basic":     {"effects": [{"metric": "vegetation", "delta": 5, "delay": 2}]},
+			"effective": {"effects": [{"metric": "vegetation", "delta": 10, "delay": 2}]},
+			"deep":      {"effects": [{"metric": "vegetation", "delta": 20, "delay": 1}, {"metric": "community", "delta": -2, "delay": 0}]},
+		},
+		"side_note": {"deep": "围网作业影响湖区捕捞，社区信任 -2"},
+	},
+	{
+		"id": "waterbird_food_supply", "name": "越冬候鸟食源补给", "category": "ecology",
+		"season": "all",
+		"tags": ["栖息地营造", "社区补偿"],
+		"desc": "与农户签订留茬留水协议，保留部分稻田藕田不翻耕，为白鹤等提供块茎与残茬食源。",
+		"cost": 30,
+		"tiers": {
+			"basic":     {"effects": [{"metric": "birds", "delta": 4, "delay": 1}]},
+			"effective": {"effects": [{"metric": "birds", "delta": 8, "delay": 1}, {"metric": "vegetation", "delta": 2, "delay": 2}]},
+			"deep":      {"effects": [{"metric": "birds", "delta": 16, "delay": 0}, {"metric": "vegetation", "delta": 3, "delay": 2}, {"metric": "community", "delta": -2, "delay": 0}]},
+		},
+		"side_note": {"deep": "大面积留茬影响农户复种，社区信任 -2"},
+	},
+	{
+		"id": "wetland_benefit_compensation", "name": "湿地生态效益补偿", "category": "social",
+		"season": "all",
+		"tags": ["社区补偿", "社区参与"],
+		"desc": "按亩补偿候鸟取食与限产损失，以共管协议约定禁捕限牧，把保护成本内部化。",
+		"cost": 30,
+		"tiers": {
+			"basic":     {"effects": [{"metric": "community", "delta": 4, "delay": 1}]},
+			"effective": {"effects": [{"metric": "community", "delta": 8, "delay": 1}, {"metric": "birds", "delta": 2, "delay": 1}]},
+			"deep":      {"effects": [{"metric": "community", "delta": 15, "delay": 0}, {"metric": "birds", "delta": 3, "delay": 2}]},
+		},
+		"side_note": {"effective": "补偿款按季兑付，社区信任延迟 1 回合到账"},
+	},
+
 ]
 
 # ==================== 知识卡数据 ====================
@@ -1526,18 +1622,80 @@ const FAILURE_TEXT := {
 	"community": "社区信任彻底破裂，农户与渔民转入对抗，保护工作再也无法开展。",
 }
 
-# ==================== 事件数据 ====================
-# 按回合触发，给出线索不给答案
-const EVENTS := {
-	1: "【危机显现】鄱阳湖连续枯水，沉水植被退化，候鸟食物告急。你是新任生态修复员，请诊断问题，做出第一个管理决策。",
-	3: "【自然预警】水位预报显示 70% 概率进入枯水期，沉水植物块茎发育将受抑制。",
-	5: "【社区报告】农户报告白鹤进入稻田取食，人鸟冲突初现端倪。",
-	7: "【突发状况】极端干旱持续，湖区水位进一步下降。",
-	9: "【矛盾激化】白鹤大量聚集农田，农户损失严重。请选择：优先保护候鸟，还是优先保障社区生计？",
+# ==================== 叙事节拍（固定，但不做生态判断）====================
+# ⚠ 只有「与当前状态无关」的话才允许写在这里 —— 开场设定、制度通知、收官预告。
+#   任何断言「现在水位如何 / 候鸟如何」的句子都必须由 situation_report() 现场生成。
+#   这一版之前这里是「按回合念稿」的事件表：第 3 回合必播「枯水期」、第 7 回合必播
+#   「极端干旱持续」，于是水位 80 的那一局照样报警干旱；第 5/9 回合必播「候鸟进田 /
+#   矛盾激化」，但机制上什么都不发生。玩测反馈原话：「他和游戏没有一点关系」。
+# ⚠ 开场那句**也不能描述当下的生态**：开局六项是 _roll_starting_metrics() 按种子掷的
+#   （每项 ±9，另有一项随机 −12 当软肋，天赋还会再加），水位完全可能是高的、软肋也可能
+#   是社区信任。所以这里只说「你是谁、该干什么」，眼下什么样由弹窗里的态势那句去讲。
+const NARRATIVE_BEATS := {
+	1: "【开场】你作为新晋的湖区管理员，从这一回合起接手鄱阳湖的生态修复。先诊断问题，开启你的第一个决策。",
 	11: "【政策通知】上级将在第 3 年末进行生态成效考核，鱼类指数达标可获专项拨款。",
-	13: "【转折点】累积决策开始显现效果，进入关键分支。",
-	15: "【收官】第 4 年冬，准备生成最终生态报告。",
+	15: "【收官】四年过去了，准备验收最终成果。",
 }
+
+# ==================== 顶部态势播报（0.1.17）====================
+# 顶部横幅不再是念稿，而是**每回合从当前六项指标现场判断该说哪一句**；
+# 但说出来的话**只描述情况，不报数字** —— 数字在右侧指标面板和悬停小窗里，横幅照原样
+# 用【自然预警】【社区报告】这种口径把「现在出了什么事」讲清楚就够了。
+#
+#   drought      水位低于本季参考下限、且偏离 ≥ WATER_ALERT_MARGIN 点
+#   flood        水位高于本季参考上限、且偏离 ≥ WATER_ALERT_MARGIN 点
+#   birds_field  候鸟 ≥ BIRD_SURPLUS_MIN、且沉水植被或鱼类低于 FOOD_SHORT_LINE
+#   calm         以上都没有（水位在区间内 / 只是小幅偏离，两种说法）
+#
+# ⚠「人鸟矛盾」**不在这里出现**（见下面暗线一节）。
+const SITUATION_TEXT := {
+	"drought": "【自然预警】气象预报未来一季降水显著偏少，湖区面临干旱风险。",
+	"flood": "【自然预警】上游持续降雨，水文站预计湖区水位快速上涨，有洪水风险。",
+	"birds_field": "【社区报告】农户报告白鹤进入稻田取食，人鸟冲突初现端倪。",
+	"calm_safe": "【湖区简报】水位落在本季参考区间内，六项指标暂无异常。",
+	"calm_off": "【湖区简报】水位略偏离本季参考区间，其余各项暂无异常。",
+}
+# 弹窗里在横幅那句话后面，再补一句它意味着什么（同样只描述，不给数字）
+const SITUATION_WHY := {
+	"drought": "低水位下鱼类资源与沉水植被会跟着流失。",
+	"flood": "新生沉水植被与草洲有被淹风险。",
+	"birds_field": "农户损失正在累积。",
+}
+# 这两回合的横幅**只放开场 / 收官那句台词**，不拼当前态势（横幅是单行、超出会打省略号，
+# 见 situation_banner()）。想让第 11 回合的政策通知也上横幅，把 11 加进来即可。
+const BANNER_BEAT_TURNS := [1, 15]
+
+# ==================== 人鸟矛盾（0.1.17 · 暗线）====================
+# 设计意图（玩测反馈）：这**不是一个会自动提醒的危机**，是玩家该自己算出来的一条暗线 ——
+# 「候鸟越堆越高、食源越来越空，早晚要出事」。所以：
+#   · 横幅与事件弹窗里**一个字都不提**；
+#   · 只有差值彻底拉开（≥ CONFLICT_THRESHOLD）才在**回合末**扣值，也就是「再不管就挨扣」；
+#   · 扣值只出现在两处，且都与其它自然扣值放在一起：结算数字、以及悬停「社区信任 / 候鸟种群」
+#     的详情页（那里会把这一笔并进「自然演化」那一栏，见 main.gd 的 _fill_metric_tip）；
+#   · 同时**悄悄**把抽牌偏向能抬「沉水植被 / 鱼类」的牌（CONFLICT_FEED_WEIGHT），
+#     不做任何「已列入下批分配」的提示 —— 玩家只会在「怎么最近老抽到补种/护渔」里自己悟。
+#
+# 判定链：
+#   ① 候鸟 ≥ BIRD_SURPLUS_MIN（「候鸟多」）
+#   ② 且（沉水植被 < FOOD_SHORT_LINE 或 鱼类 < FOOD_SHORT_LINE）（「食源紧」）→ 横幅「候鸟进田」
+#   ③ 且 差值 ≥ CONFLICT_THRESHOLD → 人鸟矛盾激化，回合末扣值
+# 差值 = max(0, 候鸟−沉水植被) + max(0, 候鸟−鱼类)
+#   —— 候鸟越高、食源越低，差值越大；两边都不低于候鸟时为 0（候鸟没多出来，谈不上抢食）。
+#
+# 调轻重的旋钮就在下面这组常量里（详见版本更新0.1.17.md 的平衡表）。
+const BIRD_SURPLUS_MIN := 62        # 「候鸟多」的起点：低于它一律不提、不扣
+const FOOD_SHORT_LINE := 50         # 「食源紧」的线：沉水植被或鱼类低于它才算
+const CONFLICT_THRESHOLD := 48      # 差值到多少才激化（实测：随机打法约 15% 的局会碰到，
+                                    #   会管数值的打法不到 10%；只管候鸟不管食源才成串触发）
+const CONFLICT_PENALTY_STEP := 12   # 差值每多这么多，社区与候鸟各多扣 1 点
+const CONFLICT_PENALTY_MAX := 8     # 单次最多各扣这么多（差值 ≥ 132 才会顶到）
+# 激化期间抽牌偏袒的「食源对策卡」：按**标签**选，和危机对策卡是同一套机制。
+# ⚠ 刻意不用「任何对沉水植被 / 鱼类有正向效果的牌」这个数值口径 —— 实测 52 张里有 36 张
+#   都沾边（很多卡只是顺手 +1/+2），一把加权下去等于没加。标签口径更准：12 张挂「生态修复」、
+#   5 张挂「增殖放流」。以后想换口径只改 _conflict_feed_set()。
+const CONFLICT_FEED_TAGS := ["生态修复", "增殖放流"]
+const CONFLICT_FEED_WEIGHT := 2.0   # 这些牌权重 ×2.0；1.0 = 完全不偏
+const WATER_ALERT_MARGIN := 4       # 水位偏离参考区间多少点才算「干旱 / 洪水」（区间内外的小抖动只写偏低/偏高）
 
 # ==================== 运行时状态 ====================
 var turn: int = 0
@@ -1583,6 +1741,13 @@ var last_crisis_name: String = ""   # 上回合爆发的危机名（用于结算
 var crisis_history: Array = []      # 已爆发的危机 [{id, turn}]，防连出与冷却的依据
 var warn_history: Array = []        # 本局预警历史 [{turn, id, value, hit_turn}]，顶部「预警回顾」用
                                     # hit_turn = -1 表示这条预警还没等到爆发（本局就结束了）
+# ===== 顶部态势播报（0.1.17）=====
+var situation: Dictionary = {}       # 本回合的态势播报（situation_report() 的结果，UI 只读）
+var prev_situation_tags: Array = []  # 上一回合的告急标签；用来判断「这一回合有没有新冒出来的」→
+                                     # 只有**新出现**的告急才弹事件窗，否则每回合都弹会烦
+var turn_bird_conflict: Dictionary = {}  # 本回合末实际结算的人鸟矛盾 {index, penalty, ...}；空 = 没激化
+var conflict_history: Array = []     # 本局人鸟矛盾结算记录 [{turn, index, penalty}]（诊断/平衡用）
+                                     # ⚠ 与 score_ledger 同理：实时对局的副产品，不进存档
 var triggered_synergies: Array = [] # 本回合触发的协同
 var _fired_synergies: Array = []    # 本局已触发过的协同（防重复）
 var is_failure: bool = false        # 是否因生态崩溃提前结束
@@ -1635,6 +1800,10 @@ func serialize() -> Dictionary:
 		"last_crisis_name": last_crisis_name,
 		"crisis_history": crisis_history.duplicate(true),
 		"warn_history": warn_history.duplicate(true),
+		# 态势播报：本回合的 report 不存（读档后由 situation_report() 现场重算），
+		# 但「上一回合的告急标签」要带回来，否则读档后第一回合会把老告急当新告急再弹一次窗。
+		"prev_situation_tags": prev_situation_tags.duplicate(),
+		"turn_bird_conflict": turn_bird_conflict.duplicate(true),
 		"triggered_synergies": triggered_synergies.duplicate(),
 		"fired_synergies": _fired_synergies.duplicate(),
 		"is_failure": is_failure, "failure_reason": failure_reason,
@@ -1675,6 +1844,9 @@ func load_state(d: Dictionary) -> void:
 	last_crisis_name = str(d.get("last_crisis_name", ""))
 	crisis_history = d.get("crisis_history", [])
 	warn_history = d.get("warn_history", [])
+	prev_situation_tags = d.get("prev_situation_tags", [])
+	turn_bird_conflict = d.get("turn_bird_conflict", {})
+	situation = {}   # 现场重算；不信任存档里的旧播报
 	triggered_synergies = d.get("triggered_synergies", [])
 	_fired_synergies = d.get("fired_synergies", [])
 	is_failure = bool(d.get("is_failure", false))
@@ -1717,6 +1889,11 @@ func reset_game() -> void:
 	warn_history = []
 	triggered_synergies = []
 	_fired_synergies = []
+	# 态势播报 / 人鸟矛盾：新局必须清干净，否则上一局的告急标签会让新局少弹一次事件窗
+	situation = {}
+	prev_situation_tags = []
+	turn_bird_conflict = {}
+	conflict_history = []
 	ever_played = {}
 	# ⚠ 紧急调度的冷却必须跟着新局一起归零。它只在**声明处**初始化过，
 	#   若不在 reset_game 里重置，上一局用掉之后新局（turn 又是 1）会继续判冷却中 ——
@@ -1871,9 +2048,24 @@ func start_new_turn() -> void:
 	funds_changed.emit()
 	turn_changed.emit()
 
-	# 触发本回合事件
-	if EVENTS.has(turn):
-		event_triggered.emit(EVENTS[turn])
+	# 本回合态势：从当前六项指标现场生成（顶部横幅实时读它，见 main.gd _refresh_event_banner）。
+	situation = situation_report()
+	# 弹窗规则：只有「叙事节拍」或「这一回合**新冒出来**的告急」才弹事件窗 ——
+	# 否则每回合都弹会把玩家烦死；而告急是持续状态时横幅一直在，不需要再弹一次。
+	# 「calm」不算告急：一切正常的回合不弹窗，只有从告急回到平稳时才让横幅自己变回平稳。
+	var beat: String = narrative_beat(turn)
+	var fresh: Array = []
+	for t in situation["tags"]:
+		if str(t) == "calm":
+			continue
+		if not prev_situation_tags.has(t):
+			fresh.append(t)
+	prev_situation_tags = situation["tags"].duplicate()
+	if beat != "" or not fresh.is_empty():
+		var body: String = str(situation["body"])
+		if beat != "":
+			body = beat + "\n\n" + body
+		event_triggered.emit(body)
 
 	# 危机系统已整体挪到 end_turn()（回合末）：预警与结算都在那里做。
 	# 原因见 end_turn 里的注释 —— 伤害与判负要发生在玩家正看着数字的结算里。
@@ -2130,15 +2322,19 @@ func tier_cost(card_id: String, tier: String) -> int:
 ## 从卡池抽 n 张（不重复）。
 ## 抽 n 张行动卡：预警期对策卡权重 ×CRISIS_COUNTER_WEIGHT（**概率提高，但不是必出**）；
 ## 没有预警时全体等权，与旧行为完全一致。整手最后打乱，免得对策卡永远躺在最左边。
+## 第三条通路（0.1.17）：人鸟矛盾激化期间，食源对策卡（标签「生态修复 / 增殖放流」）权重
+## ×CONFLICT_FEED_WEIGHT —— 这是暗线，**界面上不做任何提示**，玩家只会觉得
+## 「最近老抽到补种/护渔的牌」。
 func draw_cards(n: int, guarantee_season: bool = false) -> Array:
 	var pool := season_pool()
 	var total: int = mini(n, pool.size())
 	var wanted := _crisis_counter_set()
 	var rescue := _rescue_metric_set()
+	var feed := _conflict_feed_set()
 	var picked: Array = []
 
 	while picked.size() < total and not pool.is_empty():
-		var idx := _pick_weighted_index(pool, wanted, rescue)
+		var idx := _pick_weighted_index(pool, wanted, rescue, feed)
 		picked.append(pool[idx])
 		pool.remove_at(idx)
 
@@ -2274,24 +2470,41 @@ func clear_dispatch() -> void:
 	dispatched_cards = []
 
 
-## 加权随机抽一张的下标。权重 = 1.0 ×（对策卡 ? ×3）×（救火卡 ? ×2.5）
-func _pick_weighted_index(pool: Array, wanted: Dictionary, rescue: Dictionary) -> int:
+## 加权随机抽一张的下标。权重 = 1.0 ×（对策卡 ? ×3）×（救火卡 ? ×2.5）×（食源牌 ? ×CONFLICT_FEED_WEIGHT）
+func _pick_weighted_index(pool: Array, wanted: Dictionary, rescue: Dictionary, feed: Dictionary = {}) -> int:
 	var total_w := 0.0
 	for c in pool:
-		total_w += _card_weight(c, wanted, rescue)
+		total_w += _card_weight(c, wanted, rescue, feed)
 	var roll := randf() * total_w
 	for i in pool.size():
-		roll -= _card_weight(pool[i], wanted, rescue)
+		roll -= _card_weight(pool[i], wanted, rescue, feed)
 		if roll <= 0.0:
 			return i
 	return pool.size() - 1
 
 
-func _card_weight(card: Dictionary, wanted: Dictionary, rescue: Dictionary) -> float:
+func _card_weight(card: Dictionary, wanted: Dictionary, rescue: Dictionary, feed: Dictionary = {}) -> float:
 	var w: float = CRISIS_COUNTER_WEIGHT if wanted.has(card["id"]) else 1.0
 	if not rescue.is_empty() and _card_helps_any(card, rescue):
 		w *= RESCUE_WEIGHT
+	# 人鸟矛盾（暗线）：食源顶不住候鸟时，悄悄偏向补种 / 护渔一类的牌
+	if not feed.is_empty() and feed.has(card["id"]):
+		w *= CONFLICT_FEED_WEIGHT
 	return w
+
+
+## 人鸟矛盾激化期间要偏袒的卡 id 集合（按标签选，与危机对策卡同一套机制）；
+## 没激化就是空字典 = 第三条通路不生效。⚠ 界面上**不做任何提示** —— 这是暗线。
+func _conflict_feed_set() -> Dictionary:
+	var out := {}
+	if not bool(bird_conflict_state()["active"]):
+		return out
+	for c in ACTION_CARDS:
+		for tag in c.get("tags", []):
+			if str(tag) in CONFLICT_FEED_TAGS:
+				out[str(c["id"])] = true
+				break
+	return out
 
 
 ## 当前哪些指标「逼近致死线」：低于「该指标致死线 + RESCUE_MARGIN」即算
@@ -2631,7 +2844,142 @@ func metric_hover_preview(metric: String) -> Dictionary:
 		"break_nat": metric != "water_level" and end_min < line,
 		"break_total": metric != "water_level" and worst < line,
 		"penalty_mult": PENALTY_MULT[difficulty],
+		# 人鸟矛盾 / 候鸟进田的判定原样带上：悬停小窗要显示「回合末会扣多少」，
+		# 数字必须和回合末真正结算的那一次同源（两侧都调 bird_conflict_state）。
+		"conflict": bird_conflict_state(),
 	}
+
+
+# ==================== 顶部态势播报 + 人鸟矛盾（0.1.17）====================
+## 人鸟矛盾差值 = max(0, 候鸟−沉水植被) + max(0, 候鸟−鱼类)。纯只读。
+func bird_conflict_index() -> int:
+	var b: int = int(metrics.get("birds", 0))
+	var v: int = int(metrics.get("vegetation", 0))
+	var f: int = int(metrics.get("fish", 0))
+	return maxi(0, b - v) + maxi(0, b - f)
+
+
+## 人鸟矛盾的一次判定（纯只读，不改状态）。
+## ⚠ 顶部播报、悬停小窗、回合末实际结算**全走这一个入口** —— 提示里写的数字和真正
+##   扣的数字永远同源，不会各写一套。
+func bird_conflict_state() -> Dictionary:
+	var b: int = int(metrics.get("birds", 0))
+	var v: int = int(metrics.get("vegetation", 0))
+	var f: int = int(metrics.get("fish", 0))
+	var gap_v: int = maxi(0, b - v)
+	var gap_f: int = maxi(0, b - f)
+	var index: int = gap_v + gap_f
+	var abundant: bool = b >= BIRD_SURPLUS_MIN
+	# 「候鸟进田」＝ 候鸟多 + 食源紧（沉水植被或鱼类低于线）
+	var field: bool = abundant and (v < FOOD_SHORT_LINE or f < FOOD_SHORT_LINE)
+	var penalty: int = 0
+	if field and index >= CONFLICT_THRESHOLD:
+		penalty = clampi(1 + (index - CONFLICT_THRESHOLD) / CONFLICT_PENALTY_STEP, 1, CONFLICT_PENALTY_MAX)
+	return {
+		"birds": b, "vegetation": v, "fish": f,
+		"gap_veg": gap_v, "gap_fish": gap_f, "index": index,
+		"threshold": CONFLICT_THRESHOLD, "abundant": abundant,
+		"field": field, "active": penalty > 0, "penalty": penalty,
+	}
+
+
+## 本回合的顶部态势（纯只读，指标一变就能重算 → 横幅是「实时」的，不是念稿）。
+## 返回 {tags, short, lines, body}
+##   tags  告急标签（drought / flood / birds_field / calm）；弹窗去重与测试判据都用它
+##   short 单行简报：顶部横幅
+##   body  多行详述：给「第 N 回合 · 事件」弹窗
+##
+## ⚠ 人鸟矛盾**永远不出现在这里**（也不出现在弹窗里）—— 它是暗线：
+##   横幅只给「水位越界 / 候鸟进田」这类参考，玩家自己该不该管、管哪一项，要自己判断。
+##   激化后的扣值只在两处可见：① 结算数字里；② 悬停「社区信任 / 候鸟种群」的详情页，
+##   与其余自然扣值显示在一起（见 main.gd 的 _fill_metric_tip）。
+func situation_report() -> Dictionary:
+	var st := bird_conflict_state()
+	var season := current_season()
+	var wl: int = int(metrics.get("water_level", 0))
+	var pressure := water_pressure(wl, season)
+	var side := str(pressure["side"])
+	var dev: int = int(pressure["deviation"])
+
+	var tags: Array = []
+	var shorts: Array = []
+	var lines: Array = []
+
+	# 命中的情况，按优先级排：水位越界 → 候鸟进田
+	var keys: Array = []
+	if side == "low" and dev >= WATER_ALERT_MARGIN:
+		keys.append("drought")
+	elif side == "high" and dev >= WATER_ALERT_MARGIN:
+		keys.append("flood")
+	if bool(st["field"]):
+		keys.append("birds_field")
+
+	if keys.is_empty():
+		# 什么都不告急：只说水位在不在区间里，不报数字
+		var calm_key: String = "calm_safe" if side == "safe" else "calm_off"
+		tags.append("calm")
+		shorts.append(str(SITUATION_TEXT[calm_key]))
+		lines.append(str(SITUATION_TEXT[calm_key]))
+	else:
+		for k in keys:
+			var key := str(k)
+			tags.append(key)
+			shorts.append(str(SITUATION_TEXT[key]))
+			lines.append(str(SITUATION_TEXT[key]) + str(SITUATION_WHY.get(key, "")))
+
+	# 详情正文 = 上面那几句 + 一行现状数值（数字只留在这里，横幅上不出现）
+	var vals: Array = []
+	for metric in METRIC_NAMES:
+		vals.append("%s %d" % [METRIC_NAMES[metric], int(metrics.get(metric, 0))])
+	var body := ""
+	for l in lines:
+		body += "· " + str(l) + "\n"
+	body += "· 当前六项：" + "、".join(vals)
+	# ⚠ body 里刻意不写「水位 40（春季参考 49–61，偏低 9 点）」这种行：和上面那句重复，
+	#   而且把参考区间摆到玩家眼前就等于把「该往哪个方向调」直接送出去。
+	return {"tags": tags, "short": " ｜ ".join(shorts), "lines": lines, "body": body}
+
+
+## 顶部横幅当前该显示的那一行（纯只读）。整局任何时刻调都返回与当前数值一致的话。
+## ⚠ 第 1 / 15 回合例外：这两回合的横幅**让给开场与收官那两句**（玩测反馈明确要求
+##   「开头和结尾就在事件幅里」，不能只躺在弹窗里）。这两回合只放那一句，不拼当前态势 ——
+##   横幅是单行 Label（clip_text + TRIM_ELLIPSIS，可用宽 810px）：实测 13 号字约 11px/字，
+##   容量 70 字出头；开场那句 48 字，再拼一段态势（洪水 32 字）就是 83 字，尾巴会被吃掉。
+##   当下态势在事件弹窗正文与右侧指标面板里都有，丢不了。
+##   想让第 11 回合的政策通知也上横幅，把它加进 BANNER_BEAT_TURNS。
+func situation_banner() -> String:
+	if turn in BANNER_BEAT_TURNS:
+		var beat := narrative_beat(turn)
+		if beat != "":
+			return beat
+	return str(situation_report()["short"])
+
+
+## 本回合的叙事节拍（固定台词，不做生态判断）；没有就返回空串
+func narrative_beat(at_turn: int) -> String:
+	return str(NARRATIVE_BEATS.get(at_turn, ""))
+
+
+## 回合末结算人鸟矛盾：差值彻底拉开才扣，社区与候鸟各扣 penalty 点。
+## ⚠ 这是暗线：横幅 / 事件弹窗里都不提；流水账也**并进 routine 相位**，让它和其余自然扣值
+##   在结算动画与悬停小窗里显示在同一处（玩家要把「候鸟比食源高多少」当线索自己算）。
+## ⚠ 也不走负向难度倍率（_apply_delta 的 apply_penalty=false）—— 「显示多少就扣多少」，
+##   否则悬停小窗写的「社区 −2」在困难档实际是 −4，提示就成了假话。
+func _maybe_bird_conflict() -> void:
+	turn_bird_conflict = {}
+	if game_over:
+		return
+	var st := bird_conflict_state()
+	if not bool(st["active"]):
+		return
+	var pen: int = int(st["penalty"])
+	_apply_delta("community", -pen, false, "routine", "人鸟矛盾")
+	_apply_delta("birds", -pen, false, "routine", "人鸟矛盾")
+	turn_bird_conflict = st.duplicate(true)
+	turn_bird_conflict["turn"] = turn
+	conflict_history.append({"turn": turn, "index": int(st["index"]), "penalty": pen})
+	# 结算里只留一句事实，不给公式、不给 ⚠：想弄明白的玩家自己去看悬停小窗
+	_add_log("人鸟矛盾 −%d：社区信任、候鸟种群" % pen)
 
 
 ## 结算卡牌协同：本回合打出指定组合则触发额外效果
@@ -2682,6 +3030,9 @@ func advance_effects() -> void:
 func end_turn() -> void:
 	advance_effects()
 	resolve_synergies()      # 卡牌协同（在自然演化前结算，让玩家看到组合收益）
+	# 人鸟矛盾：用「这一手打完、自然涨落之前」的数值判定 —— 判据就是「你这回合把候鸟
+	# 撑得比食源高了多少」。放在自然演化之前，是为了让它和悬停小窗的推演走同一批数字。
+	_maybe_bird_conflict()
 	natural_evolution()
 
 	# 结转规则：未用资金计息（利滚利），最多 max_carry 万，溢出转科研点（天赋可提升）

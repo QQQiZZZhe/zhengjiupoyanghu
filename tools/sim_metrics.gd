@@ -238,6 +238,16 @@ func _run(strategy: String, pool: Array) -> Dictionary:
 		final_arr[str(m)] = []
 	var survived := 0
 	var turns_sum := 0
+	# 0.1.17 人鸟矛盾：触发率 / 触发回合数 / 累计扣减，用来判「会不会随便就激化」
+	var conflict_games := 0
+	var conflict_hits := 0
+	var conflict_pen := 0
+	var field_turns := 0
+	# 差值直方图（桶宽 4）：阈值该怎么定，直接看这张分布表 ——
+	# 记的是**回合末判定那一刻**的差值（出牌后、自然涨落前），也就是真正拿去比阈值的那一个数。
+	var index_hist := {}
+	var field_index_hist := {}
+	var pen_hist := {}
 	var spent_sum := 0
 	var cards_sum := 0
 	var plays_sum := 0
@@ -253,6 +263,9 @@ func _run(strategy: String, pool: Array) -> Dictionary:
 		var guard := 0
 		while not GS.game_over and guard < 40:
 			guard += 1
+			# 本回合开局（= 玩家看到顶部横幅与悬停小窗的那一刻）的候鸟食源态势
+			if bool(GS.bird_conflict_state()["field"]):
+				field_turns += 1
 			money_sum += int(GS.funds)                 # 本回合开局可支配资金
 			metric_fund_sum += int(GS.last_metric_funding)
 			# 自然演化净漂移（只读推演，不改状态）
@@ -275,6 +288,12 @@ func _run(strategy: String, pool: Array) -> Dictionary:
 					break
 			if GS.game_over:
 				break
+			# 差值分布（桶宽 4）：判定用的就是这一刻的值（这一手打完、自然涨落之前）
+			var idx: int = int(GS.bird_conflict_state()["index"])
+			var bucket: int = (idx / 4) * 4
+			index_hist[bucket] = int(index_hist.get(bucket, 0)) + 1
+			if bool(GS.bird_conflict_state()["field"]):
+				field_index_hist[bucket] = int(field_index_hist.get(bucket, 0)) + 1
 			GS.end_turn()
 			# 危机统计：本回合末爆发的危机（crisis_history 最后一条）
 			if not GS.crisis_history.is_empty():
@@ -291,6 +310,15 @@ func _run(strategy: String, pool: Array) -> Dictionary:
 			if GS.game_over:
 				break
 			GS.start_new_turn()
+
+		var ch: Array = GS.conflict_history
+		if not ch.is_empty():
+			conflict_games += 1
+			conflict_hits += ch.size()
+			for ce in ch:
+				conflict_pen += int(ce["penalty"])
+				var pk: int = int(ce["penalty"])
+				pen_hist[pk] = int(pen_hist.get(pk, 0)) + 1
 
 		if GS.is_failure:
 			var fm := str(GS.failure_metric)
@@ -326,6 +354,16 @@ func _run(strategy: String, pool: Array) -> Dictionary:
 		"avg_final": {}, "median_final": {}, "p10_final": {},
 		"avg_natural_drift_per_turn": {},
 		"crisis_hits": crisis_count, "crisis_dmg_by_metric": crisis_dmg,
+		"conflict": {
+			"games_with_conflict": conflict_games,
+			"rate_of_games": snappedf(float(conflict_games) / n, 0.0001),
+			"hits_per_game": snappedf(float(conflict_hits) / n, 0.01),
+			"penalty_per_game": snappedf(float(conflict_pen) / n, 0.01),
+			"penalty_per_hit": snappedf(float(conflict_pen) / maxf(1.0, float(conflict_hits)), 0.01),
+			"field_turns_per_game": snappedf(float(field_turns) / n, 0.01),
+			"index_hist_bin4": index_hist, "field_index_hist_bin4": field_index_hist, "pen_hist": pen_hist,
+			"threshold": GS.CONFLICT_THRESHOLD, "bird_min": GS.BIRD_SURPLUS_MIN, "food_line": GS.FOOD_SHORT_LINE,
+		},
 		"avg_score": {"eco": snappedf(score_sum["eco"] / n, 0.01), "social": snappedf(score_sum["social"] / n, 0.01), "manage": snappedf(score_sum["manage"] / n, 0.01), "avg": snappedf(score_sum["avg"] / n, 0.01)},
 	}
 	for m in METRICS_ORDER:

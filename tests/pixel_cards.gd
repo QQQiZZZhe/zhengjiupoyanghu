@@ -20,19 +20,45 @@ func capture(label: String) -> void:
 	RenderingServer.force_draw()
 	get_viewport().get_texture().get_image().save_png(output_dir.path_join(label + ".png"))
 
-func verify_face(panel: PanelContainer, title: String, footer: String, dixinhu: bool = false) -> void:
+func verify_face(panel: PanelContainer, title: String, footer: String, dixinhu: bool = false, knowledge_category: String = "") -> void:
 	check(panel.has_meta("pixel_face"), title + " uses the shared bitmap face")
 	var face: TextureRect = panel.get_meta("pixel_face")
 	check(face.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST, "No smoothing")
+	for child in panel.get_children():
+		check(not child is Label or not child.visible, "Card text never draws with a Label")
 	if dixinhu:
-		check(face.texture == PixelArt.DIXINHU, "Dixinhu uses the complete supplied easter-egg face")
+		check(face.texture == PixelArt.KNOWLEDGE_FACE_EGG, "Dixinhu uses the complete supplied easter-egg face")
+		return
+	# 未解锁：统一用画好的「未知」卡面，代码一个字都不写（图上自带「未知 / ？ / UNKNOW」）
+	if footer == "未收集":
+		check(face.texture == PixelArt.KNOWLEDGE_FACE_LOCKED, "Locked cards use the supplied unknown face")
+		return
+	# 有画好卡面的知识卡类别：整张卡面 + 只把卡名写在中间空白带里
+	if PixelArt.knowledge_face(knowledge_category) != null:
+		check(face.texture == PixelArt.knowledge_texture(title, knowledge_category),
+			"Knowledge face carries only the name")
+		var base_image: Image = PixelArt.knowledge_face(knowledge_category).get_image()
+		var out_image := face.texture.get_image()
+		var band := PixelArt.knowledge_text_band(title).grow(PixelArt.FACE_SCALE)
+		var outside := 0
+		var shadows := 0
+		for y in out_image.get_height():
+			for x in out_image.get_width():
+				var pixel := out_image.get_pixel(x, y)
+				if pixel == base_image.get_pixel(x, y):
+					continue
+				if not band.has_point(Vector2i(x, y)):
+					outside += 1
+				if pixel == Color8(150, 150, 150):
+					shadows += 1
+		check(outside == 0, "Knowledge face only writes inside the text band: %d stray pixels" % outside)
+		check(shadows > 0, "Knowledge face name keeps the shared drop shadow")
+		check(PixelArt._lines(title).size() <= 4, "Full name fits without truncation")
 		return
 	check(face.texture == PixelArt.texture(title, footer), "Correct name and fee/state")
 	var category: String = "knowledge" if footer in ["知识卡", "未收集"] else PixelArt.category_for(title)
 	var base: Image = PixelArt.base_image(category)
 	var glyph_scale := 4 if PixelArt.SUITS.has(category) else 1
-	for child in panel.get_children():
-		check(not child is Label or not child.visible, "Card text never draws with a Label")
 	var image := face.texture.get_image()
 	var unchanged := true
 	var shadows := 0
@@ -75,8 +101,9 @@ func _ready() -> void:
 	for kid in Knowledge.all_ids():
 		for collected in [false, true]:
 			var panel: PanelContainer = game._make_knowledge_card(kid, collected)
+			var kcat: String = str(GameState.KNOWLEDGE_CARDS[kid].get("category", "")) if collected else ""
 			verify_face(panel, GameState.KNOWLEDGE_CARDS[kid].name if collected else "？",
-				"知识卡" if collected else "未收集", collected and kid == "egg_dixinhu")
+				"知识卡" if collected else "未收集", collected and kid == "egg_dixinhu", kcat)
 			panel.free()
 	game._on_title_start()
 	game._on_difficulty_pick(GameState.Difficulty.EASY)
@@ -136,7 +163,7 @@ func _ready() -> void:
 	var overlays: Array = foil_card.get_meta("gyro_overlays")
 	check(overlays.size() == 1, "Foil remains independent and follows the rigid card")
 	if overlays.size() == 1:
-		check(overlays[0].get_shader_parameter("card_mask") == PixelArt.DIXINHU, "Foil mask follows the supplied easter-egg face")
+		check(overlays[0].get_shader_parameter("card_mask") == PixelArt.KNOWLEDGE_FACE_EGG, "Foil mask follows the supplied easter-egg face")
 		check(overlays[0].get_shader_parameter("card_center") == game._card_gyro_center(foil_card), "Foil uses the same card center")
 	await capture("pixel-cards-foil")
 	game._close_knowledge_viewer()

@@ -233,6 +233,10 @@ var popup_button: Button
 var _popup_continue: Callable = Callable()
 var _popup_reveal: Tween
 var _current_event: String = ""
+# 顶部横幅的临时覆盖（只有危机弹层会写它：危机预警/爆发时横幅必须让位给危机）。
+# 空串 = 横幅显示 GameState 现场生成的态势简报（见 _refresh_event_banner）。
+# ⚠ 与 _current_event 分开：后者是「第 N 回合 · 事件」弹窗的正文，不能被危机文案顶掉。
+var _banner_override: String = ""
 
 # 主菜单
 var menu_root: Control
@@ -3516,6 +3520,7 @@ func load_game() -> bool:
 	_playing = true
 	_paused = false
 	_current_event = str(data.get("event_text", ""))
+	_banner_override = ""   # 读档后横幅直接显示当前态势，不继承上一局的危机残留
 	_update_hud()
 	_update_3d()
 	var phase: String = str(data.get("phase", "allocate"))
@@ -3700,6 +3705,7 @@ func _process_crisis_queue() -> void:
 ## 玩家点掉危机弹窗：还有下一个危机就继续弹，否则（无事件弹窗时）进入分配
 func _on_crisis_dismiss() -> void:
 	crisis_root.visible = false
+	_banner_override = ""   # 危机弹层让出横幅，回到实时态势
 	if not _crisis_queue.is_empty():
 		_process_crisis_queue()
 	elif not popup_root.visible:
@@ -3713,8 +3719,9 @@ func _show_crisis_alert(crisis: Dictionary, is_warning: bool) -> void:
 	crisis_tag.text = "⚠ 危机预警" if is_warning else "⚠ 危机爆发"
 	crisis_button.text = "知道了" if is_warning else "继续"
 	crisis_body.text = _crisis_body_text(crisis, is_warning)
-	# 危机同步到顶部横幅，关掉弹窗后仍可见
-	_current_event = "⚠ %s：%s" % [("危机预警" if is_warning else "危机爆发"), name]
+	# 危机同步到顶部横幅：危机期间横幅让位给危机（_banner_override），
+	# 弹层关掉后自动回到实时态势（见 _on_crisis_dismiss / _refresh_event_banner）。
+	_banner_override = "⚠ %s · %s" % [("危机预警" if is_warning else "危机爆发"), name]
 	_update_hud()
 
 	crisis_root.visible = true
@@ -5133,8 +5140,11 @@ func _make_knowledge_card(kid: String, collected: bool) -> PanelContainer:
 	panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	panel.add_theme_stylebox_override("panel", _knowledge_card_style(collected))
 	var k: Dictionary = GameState.KNOWLEDGE_CARDS.get(kid, {})
+	# category 传**知识卡类别**（植物 / 鸟类 / …）：画好的卡面按类别取，卡名由 PixelCardArt 写到
+	# 卡面中间那块空白里。未收集的不传类别 —— 统一用「未知」卡面，不泄露它属于哪一类。
 	PixelCardArt.add_face(panel, str(k.get("name", "")) if collected else "？",
-		"知识卡" if collected else "未收集", not collected, "", collected and kid == "egg_dixinhu")
+		"知识卡" if collected else "未收集", not collected, "",
+		collected and kid == "egg_dixinhu", str(k.get("category", "")) if collected else "")
 	if collected and kid == "egg_dixinhu":
 		var rim := ColorRect.new()
 		rim.name = "KnowledgeFoil"
@@ -5143,7 +5153,7 @@ func _make_knowledge_card(kid: String, collected: bool) -> PanelContainer:
 		rim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		var foil := ShaderMaterial.new()
 		foil.shader = preload("res://scripts/knowledge_foil.gdshader")
-		foil.set_shader_parameter("card_mask", PixelCardArt.DIXINHU)
+		foil.set_shader_parameter("card_mask", PixelCardArt.KNOWLEDGE_FACE_EGG)
 		rim.material = foil
 		panel.add_child(rim)
 		rim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -5644,6 +5654,18 @@ func _fill_metric_tip(metric: String) -> void:
 	var end_min: int = int(p["end_min"])
 	var end_max: int = int(p["end_max"])
 
+	# 人鸟矛盾（暗线）：这一笔**并进「自然演化」那一栏**，不给它单独的醒目提示 ——
+	# 玩家看到的是「自然演化 −N」，想明白为什么就自己把候鸟与食源的差距算一遍。
+	# 只有被它扣的那两项（社区信任 / 候鸟种群）带上这笔；数值与实际结算同源（同一个入口）。
+	var cf: Dictionary = p.get("conflict", {})
+	var cf_pen: int = 0
+	if bool(cf.get("active", false)) and (metric == "community" or metric == "birds"):
+		cf_pen = int(cf["penalty"])
+		nat_min -= cf_pen
+		nat_max -= cf_pen
+		end_min -= cf_pen
+		end_max -= cf_pen
+
 	# ① 本回合自然演化会掉多少（水位是随机，给区间）
 	var dtxt := ""
 	var dcol := "#8e9aa4"
@@ -5661,6 +5683,9 @@ func _fill_metric_tip(metric: String) -> void:
 	var rows: Array = []
 	rows.append("[color=#cfd6dc]自然演化（含洪旱联动）[/color]   [color=%s][b]%s[/b][/color]" % [dcol, dtxt])
 	# 刻意不写「为什么」：水质怎么拖累植被、植被怎么影响候鸟这一类因果，是留给玩家自己悟的隐性参数。
+	# 人鸟矛盾同理：只报一个安静的小计，不给公式、不给原因
+	if cf_pen > 0:
+		rows.append("[color=#8e9aa4]· 其中人鸟矛盾 −%d[/color]" % cf_pen)
 
 	# ② 回合末大概落到哪
 	if kind == "random":
@@ -5674,7 +5699,9 @@ func _fill_metric_tip(metric: String) -> void:
 	#   回合末余量 = 按本回合自然演化的**最坏一头**算（47 - 10 = 37，再减 37 → 0）
 	# 以前只写「余量」两个字，同一屏上又摆着 47 和 37，玩家会算成 10 而觉得是 bug。
 	var line: int = int(p["line"])
-	var margin: int = int(p["margin_nat"])
+	# ⚠ 余量也要用**调整后**的 end_min 算：同一个数不能两个口径（否则小窗上「回合末约 48」
+	#   和「回合末余量 3」（红线 50 时该是 −2）会自相矛盾）。
+	var margin: int = end_min - line
 	var cur_margin: int = int(p["cur"]) - line
 	var mcol := "#7ee08a"
 	if margin < 0:
@@ -5689,7 +5716,9 @@ func _fill_metric_tip(metric: String) -> void:
 	rows.append("[color=#cfd6dc]生态红线[/color]   [color=#ff8080][b]%d[/b][/color]    [color=#cfd6dc]当前余量[/color] [color=%s][b]%d[/b][/color]" % [line, ccol, cur_margin])
 	rows.append("[color=#cfd6dc]回合末余量[/color]   [color=%s][b]%d[/b][/color]" % [mcol, margin])
 	# 难度怎么放大衰减也是隐性参数，不写出来（两档都玩两把自然就有数）
-	if bool(p["break_nat"]):
+	# ⚠ 用调整后的 end_min 重新判「会不会跌破」：人鸟矛盾那一笔也算进去，
+	#   否则小窗会一边显示回合末 48、一边说「仍在红线上」（红线 50）。
+	if end_min < line:
 		rows.append("[color=#ff5a5a][b]⚠ 回合末就会跌破生态红线[/b][/color]")
 	elif margin <= 3:
 		rows.append("[color=#ffcc66]⚠ 回合末将贴近生态红线[/color]")
@@ -5724,6 +5753,9 @@ func _fill_water_metric_tip(p: Dictionary) -> void:
 		rows.append("[color=#7ee08a]当前在参考区间内[/color]")
 	else:
 		rows.append("[color=#ffcc66]当前%s %d 点 · 生态压力 ×%.2f[/color]" % ["偏低" if pressure["side"] == "low" else "偏高", pressure["deviation"], pressure["multiplier"]])
+	# 与顶部横幅同一条线：偏离 ≥ WATER_ALERT_MARGIN 点才升格成「预警」，区间内外的小抖动只写偏低/偏高。
+	if int(pressure["deviation"]) >= GameState.WATER_ALERT_MARGIN:
+		rows.append("[color=#ffb060]⚠ %s预警：已偏离参考区间 %d 点[/color]" % ["干旱" if pressure["side"] == "low" else "洪水", int(pressure["deviation"])])
 	rows.append("自然涨落 [b]%+d ~ %+d[/b] → 回合末水位 [b]%d ~ %d[/b]" % [drift[0], drift[1], p["end_min"], p["end_max"]])
 	var losses: Array[String] = []
 	var outcomes: Array = GameState.natural_evolution_outcomes()
@@ -5814,17 +5846,39 @@ func _update_hud() -> void:
 	# 不能在 _build_ui 里写死 —— 那时难度还没选。
 	if action_hint != null:
 		action_hint.text = "每回合最多 %d 个行动" % GameState.action_slots()
-	event_label.text = _current_event if _current_event != "" else "暂无"
+	_refresh_event_banner()
 	_update_selected_label()
 	_refresh_warn_bar()
 	_refresh_run_talents()      # 左上「本局天赋」常驻行（内容没变时直接跳过）
 	_refresh_action_buttons()   # 紧急调度 / 刷新手牌 的可用态
 
 
+# ==================== 顶部态势横幅 ====================
+## 顶部横幅显示的**永远是当前状态**，不是本回合开始时写死的那句话 ——
+## _update_hud() 每次指标/资金/回合变化都会调它，所以水位一沉下去，
+## 横幅下一帧就变成「干旱预警」；水位涨上来就变成「洪水预警」，不会出现
+## 「水位 80 还挂着干旱」这种和游戏对不上的念稿（0.1.17 修的就是这个）。
+## 唯一的例外是危机弹层：预警/爆发期间横幅让位给危机，弹层关掉后自动回到实时态势。
+func _refresh_event_banner() -> void:
+	if event_label == null:
+		return
+	var s: String = ""
+	if _banner_override != "":
+		s = _banner_override
+	else:
+		s = GameState.situation_banner()
+	if s.strip_edges() == "":
+		s = "暂无"
+	if event_label.text != s:
+		event_label.text = s
+
+
 # ==================== 事件 / 结算 / 知识卡 / 报告 ====================
 func _on_event(text: String) -> void:
 	_current_event = text
 	_current_phase = "popup_event"
+	# 新回合的态势播报盖过上一回合残留的危机横幅
+	_banner_override = ""
 	_update_hud()
 	hand_panel.visible = false
 	bottom_right.visible = false
@@ -7493,6 +7547,7 @@ func _on_game_end(report: Dictionary) -> void:
 	if report.get("is_failure", false):
 		_crisis_queue.clear()
 		crisis_root.visible = false   # 危机警示让位给失败报告，不留残影
+		_banner_override = ""         # 横幅也一起交还给实时态势
 		_show_report(report)
 
 
@@ -7577,6 +7632,7 @@ func _show_report(r: Dictionary) -> void:
 func _restart() -> void:
 	_playing = false
 	_current_event = ""
+	_banner_override = ""
 	# 回到主菜单，让玩家可重新输入种子（留空则随机）
 	_show_menu()
 

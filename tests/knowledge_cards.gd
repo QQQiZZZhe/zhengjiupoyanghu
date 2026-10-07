@@ -66,6 +66,9 @@ func _ready() -> void:
 	await settle(1.8)
 	check(game.knowledge_grid.get_child_count() == 41, "All 41 cards must appear")
 	check(game.knowledge_count_label.text == "已收集 0 / 41", "New profile starts at 0 / 41")
+	# 未收集统一的「未知」卡面（assets/art/knowledge/kd-11.png）：图里自带「未知 / ？ / UNKNOW」，
+	# 所以代码不再往上写「？」和「未收集」，也不额外压灰。
+	await capture("knowledge-locked-grid")
 	game._show_knowledge_detail(game.knowledge_grid.get_child(8), "geo_poyang")
 	check(game.knowledge_detail_title.text == "？？？", "Locked card title stays hidden")
 	check(not "source_url" in game.knowledge_detail_body.text and not "https://" in game.knowledge_detail_body.text, "Locked card sources stay hidden")
@@ -98,6 +101,10 @@ func _ready() -> void:
 		check(game._knowledge_art(kid) != null, "%s needs an illustration" % kid)
 		game._show_knowledge_detail(view, kid)
 		check(game.knowledge_detail_title.text == GameState.KNOWLEDGE_CARDS[kid]["name"], "%s opens the correct title" % kid)
+		# 新卡面（植物 / 鸟类 / 彩蛋）在放大后的详情大牌上也要正常
+		if kid in ["plant_kucao", "bird_baihe", "plant_sedge"]:
+			await settle(1.2)
+			await capture("knowledge-face-%s" % kid)
 		if GameState.KNOWLEDGE_CARDS[kid].has("source_url"):
 			check(GameState.KNOWLEDGE_CARDS[kid]["source_url"] in game.knowledge_detail_body.text, "%s opens its source link" % kid)
 	game._close_knowledge_detail()

@@ -1,5 +1,6 @@
 extends Node
 ## Run in an isolated test project/user directory; see docs/UI_REDESIGN.md.
+const PixelArt = preload("res://scripts/pixel_card_art.gd")
 var game: Node
 var failures: Array[String] = []
 var checks: int = 0          # 断言总数（最后打印出来，证据里就有确切条数）
@@ -105,8 +106,10 @@ func _ready() -> void:
 		game._on_viewer_card_unhover(v)
 	await settle(0.3)
 	var first_view: Control = game.knowledge_grid.get_child(0)
-	var locked_sb: StyleBoxFlat = (first_view.get_meta("panel") as PanelContainer).get_theme_stylebox("panel")
-	check(locked_sb.bg_color.is_equal_approx(Color("d9d6cc")), "未收集卡应是灰卡底，实际 %s" % locked_sb.bg_color)
+	# 卡面自己承担底色：VisualTheme.card_style 的 bg_color 是透明、无边框（卡牌的框画在图里），
+	# 所以「未收集变灰」现在是**换一张画好的「未知」卡面**，不再看 stylebox 颜色。
+	var locked_face: TextureRect = (first_view.get_meta("panel") as PanelContainer).get_meta("pixel_face")
+	check(locked_face.texture == PixelArt.KNOWLEDGE_FACE_LOCKED, "未收集卡应换成「未知」卡面")
 	await capture("01b-knowledge-locked")
 	# 点开一张未收集的 —— 只该看到「未收集」与「？」
 	var click_ev := InputEventMouseButton.new()
@@ -131,12 +134,15 @@ func _ready() -> void:
 	for v in game.knowledge_grid.get_children():
 		game._on_viewer_card_unhover(v)
 	await settle(0.3)
-	var lit_view: Control = game.knowledge_grid.get_child(0)
-	var lit_sb: StyleBoxFlat = (lit_view.get_meta("panel") as PanelContainer).get_theme_stylebox("panel")
-	check(lit_sb.bg_color.is_equal_approx(Color("f1e8cc")), "已收集卡应回到纸卡底，实际 %s" % lit_sb.bg_color)
-	var locked2: Control = game.knowledge_grid.get_child(2)
-	var locked2_sb: StyleBoxFlat = (locked2.get_meta("panel") as PanelContainer).get_theme_stylebox("panel")
-	check(locked2_sb.bg_color.is_equal_approx(Color("d9d6cc")), "没收集的卡仍旧是灰的")
+	# 已收集的卡换成该类别画好的卡面、卡名写在卡面中间（苦草 = 植物）。
+	# ⚠ 别用 get_child(0)：第 0 张是彩蛋卡狄鑫壶，这时还没收集，是「未知」卡面。
+	var lit_index: int = Knowledge.all_ids().find("plant_kucao")
+	var lit_view: Control = game.knowledge_grid.get_child(lit_index)
+	var lit_face: TextureRect = (lit_view.get_meta("panel") as PanelContainer).get_meta("pixel_face")
+	check(lit_face.texture == PixelArt.knowledge_texture("苦草", "植物"), "已收集卡应换成该类别卡面并写上卡名")
+	var locked2: Control = game.knowledge_grid.get_child(0)
+	var locked2_face: TextureRect = (locked2.get_meta("panel") as PanelContainer).get_meta("pixel_face")
+	check(locked2_face.texture == PixelArt.KNOWLEDGE_FACE_LOCKED, "没收集的卡仍旧是「未知」卡面")
 	await capture("01d-knowledge-mixed")
 	game._on_knowledge_card_click(click_ev, lit_view, "plant_kucao")
 	await settle(2.6)
