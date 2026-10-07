@@ -2,10 +2,18 @@ extends PanelContainer
 signal back_requested
 const VisualTheme := preload("res://scripts/visual_theme.gd")
 const NODE_SIZE := Vector2(112, 52)
+const GRAPH_MARGIN := Vector2(96, 12)
+const COLUMN_STEP := 126.0
+const LAYER_STEP := 100.0
+const GRAPH_SIZE := Vector2(850, 476)
+const LINE_WIDTH := 1.5
+const DASH_LENGTH := 6.0
+const DASH_GAP := 4.0
 var graph: Control
 var graph_scroll: ScrollContainer
 var buttons: Dictionary = {}
 var selected_id := "hydro"
+var hovered_id := ""
 var wallet: Label
 var detail_title: Label
 var detail_text: Label
@@ -56,7 +64,7 @@ func _ready() -> void:
 	graph_scroll.custom_minimum_size = Vector2(180, 200)
 	body.add_child(graph_scroll)
 	graph = Control.new()
-	graph.custom_minimum_size = Vector2(758, 430)
+	graph.custom_minimum_size = GRAPH_SIZE
 	graph.draw.connect(_draw_graph)
 	graph_scroll.add_child(graph)
 	for node in Talents.TREE:
@@ -66,6 +74,8 @@ func _ready() -> void:
 		view.size = NODE_SIZE
 		view.custom_minimum_size = NODE_SIZE
 		view.add_theme_font_size_override("font_size", 13)
+		view.mouse_entered.connect(_hover_node.bind(id))
+		view.mouse_exited.connect(_hover_node.bind(""))
 		graph.add_child(view)
 		buttons[id] = view
 	var detail := VBoxContainer.new()
@@ -113,7 +123,11 @@ func fit_viewport() -> void:
 	graph.queue_redraw()
 
 func node_position(node: Dictionary) -> Vector2:
-	return Vector2(12 + float(node.slot) * 126, 25 + int(node.layer) * 82)
+	return GRAPH_MARGIN + Vector2(float(node.slot) * COLUMN_STEP, int(node.layer) * LAYER_STEP)
+
+func _hover_node(id: String) -> void:
+	hovered_id = id
+	graph.queue_redraw()
 
 func select_node(id: String) -> void:
 	selected_id = id
@@ -168,24 +182,91 @@ func refresh() -> void:
 	respec_button.disabled = Talents.nightmare_mastery or Talents.allocated_cost() == 0
 	graph.queue_redraw()
 
-func _draw_graph() -> void:
-	var font := get_theme_default_font()
-	var layer_titles := ["研修起点", "基础方向 · 三选二", "分支研修 · 每组至多三级", "交叉研修 · 总计至多三级", "终层专精 · 三选一"]
+func _graph_connections() -> Array[Dictionary]:
+	var edges: Array[Dictionary] = []
 	for node in Talents.TREE:
 		for parent_id in node.parents:
-			var parent: Dictionary = Talents.tree_entry(parent_id)
-			var start := node_position(parent) + Vector2(NODE_SIZE.x * 0.5, NODE_SIZE.y)
-			var finish := node_position(node) + Vector2(NODE_SIZE.x * 0.5, 0)
-			var points := PackedVector2Array()
-			for step in 25:
-				var t := float(step) / 24.0
-				points.append(start.bezier_interpolate(start + Vector2(0, 18), finish - Vector2(0, 18), finish, t))
-			var color := Color("44635f")
-			if Talents.tree_rank(parent_id) > 0: color = VisualTheme.GOLD if Talents.tree_rank(node.id) > 0 else VisualTheme.MINT
-			if node.get("mode", "all") == "any":
-				for step in range(0, points.size() - 1, 2): graph.draw_line(points[step], points[step + 1], color, 1.5, true)
-			else: graph.draw_polyline(points, color, 1.5, true)
+			edges.append({"parent": str(parent_id), "node": node})
+	# Give each connection its own port and horizontal lane in the inter-row gap.
+	for edge in edges:
+		var node: Dictionary = edge.node
+		var parent: Dictionary = Talents.tree_entry(edge.parent)
+		var siblings: Array[Dictionary] = []
+		var layer_edges: Array[Dictionary] = []
+		for candidate in edges:
+			if candidate.parent == edge.parent: siblings.append(candidate)
+			if candidate.node.layer == node.layer: layer_edges.append(candidate)
+		var out_index := siblings.find(edge)
+		var in_index: int = node.parents.find(edge.parent)
+		var start := node_position(parent) + Vector2(NODE_SIZE.x * 0.5, NODE_SIZE.y + 2)
+		var finish := node_position(node) + Vector2(NODE_SIZE.x * 0.5, -2)
+		start.x += (out_index - (siblings.size() - 1) * 0.5) * 12.0
+		finish.x += (in_index - (node.parents.size() - 1) * 0.5) * 12.0
+		var lane := lerpf(start.y + 7, finish.y - 7, float(layer_edges.find(edge) + 1) / float(layer_edges.size() + 1))
+		edge["points"] = _rounded_route(PackedVector2Array([start, Vector2(start.x, lane), Vector2(finish.x, lane), finish]))
+	return edges
+
+func _rounded_route(corners: PackedVector2Array) -> PackedVector2Array:
+	var points := PackedVector2Array([corners[0]])
+	for i in range(1, corners.size() - 1):
+		var corner := corners[i]
+		var before := corners[i - 1] - corner
+		var after := corners[i + 1] - corner
+		var radius := minf(5.0, minf(before.length(), after.length()) * 0.5)
+		var entry := corner + before.normalized() * radius
+		var exit := corner + after.normalized() * radius
+		points.append(entry)
+		for step in range(1, 7):
+			var t := float(step) / 6.0
+			points.append(entry.lerp(corner, t).lerp(corner.lerp(exit, t), t))
+	points.append(corners[corners.size() - 1])
+	return points
+
+func _draw_connection(points: PackedVector2Array, color: Color, dashed: bool) -> void:
+	if not dashed:
+		graph.draw_polyline(points, color, LINE_WIDTH, true)
+		return
+	# Measure dashes along the whole path so bends do not change their rhythm.
+	var distance := 0.0
+	for i in range(points.size() - 1):
+		var segment := points[i + 1] - points[i]
+		var length := segment.length()
+		var offset := 0.0
+		while offset < length:
+			var phase := fposmod(distance, DASH_LENGTH + DASH_GAP)
+			var drawing := phase < DASH_LENGTH
+			var remaining := (DASH_LENGTH if drawing else DASH_LENGTH + DASH_GAP) - phase
+			var advance := minf(length - offset, maxf(remaining, 0.001))
+			if drawing:
+				graph.draw_line(points[i] + segment.normalized() * offset, points[i] + segment.normalized() * (offset + advance), color, LINE_WIDTH, true)
+			offset += advance
+			distance += advance
+
+func _draw_graph() -> void:
+	var focus_id := hovered_id if not hovered_id.is_empty() else selected_id
+	var edges := _graph_connections()
+	# Focused routes are drawn last, with a small clearance at unavoidable crossings.
+	for focused_pass in [false, true]:
+		for edge in edges:
+			var node: Dictionary = edge.node
+			var focused: bool = edge.parent == focus_id or node.id == focus_id
+			if focused != focused_pass: continue
+			var color := Color("708e87")
+			color.a = 0.28
+			if Talents.tree_rank(edge.parent) > 0:
+				color = VisualTheme.MINT
+				color.a = 0.38
+			if focused:
+				color = VisualTheme.GOLD if node.id == focus_id else VisualTheme.MINT
+				graph.draw_polyline(edge.points, VisualTheme.INK, 5.0, true)
+			_draw_connection(edge.points, color, node.get("mode", "all") == "any")
+			if focused:
+				graph.draw_circle(edge.points[0], 2.2, color, true, -1, true)
+				graph.draw_circle(edge.points[edge.points.size() - 1], 2.2, color, true, -1, true)
+	var font := get_theme_default_font()
+	var layer_titles := ["研修起点", "基础方向", "分支研修", "交叉研修", "终层专精"]
+	var layer_notes := ["", "三选二", "每组至多三级", "总计至多三级", "三选一"]
 	for layer in layer_titles.size():
-		var label_size := font.get_string_size(layer_titles[layer], HORIZONTAL_ALIGNMENT_LEFT, -1, 12)
-		graph.draw_rect(Rect2(Vector2(9, 3 + layer * 82), Vector2(label_size.x + 6, 17)), VisualTheme.INK)
-		graph.draw_string(font, Vector2(12, 17 + layer * 82), layer_titles[layer], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, VisualTheme.MINT)
+		var y := GRAPH_MARGIN.y + layer * LAYER_STEP
+		graph.draw_string(font, Vector2(8, y + 22), layer_titles[layer], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, VisualTheme.MINT)
+		graph.draw_string(font, Vector2(8, y + 41), layer_notes[layer], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("829b94"))

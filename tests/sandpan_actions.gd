@@ -60,6 +60,46 @@ func _ready() -> void:
 		await settle(0.1)
 	await settle(1.0)
 	reset_fixture()
+	# Map counts follow the two HUD metrics, independent of hidden drivers.
+	var previous_birds := -1
+	var previous_houses := -1
+	for value in [0, 10, 25, 50, 75, 90, 100]:
+		GameState.metrics.birds = value
+		GameState.metrics.community = value
+		game.wetland.sync_state({}, false)
+		var birds := 0
+		for sid in GameState.SPECIES: birds += game.wetland._bird_count(sid)
+		check(birds == roundi(value * 0.5), "Bird total must follow birds metric exactly")
+		check(birds >= previous_birds, "Bird count must increase with birds metric")
+		check(game.wetland.house_target_count == roundi(value / 100.0 * game.wetland.house_sites.size()), "House total must follow community metric")
+		check(game.wetland.house_target_count >= previous_houses, "House count must increase with community metric")
+		var visible_houses := 0
+		for phase in game.wetland.house_progress:
+			if phase > 0.99: visible_houses += 1
+		check(visible_houses == game.wetland.house_target_count, "Immediate sync must snap house visibility")
+		previous_birds = birds
+		previous_houses = game.wetland.house_target_count
+		if value in [0, 50, 100]:
+			game._update_hud()
+			await capture("population-" + str(value))
+	GameState.metrics.birds = 100
+	GameState.metrics.community = 100
+	game.wetland.sync_state({}, false)
+	GameState.metrics.birds = 0
+	GameState.metrics.community = 0
+	var frozen_state: Dictionary = game.wetland.capture_state()
+	game.wetland.play_action("bird_reserve", frozen_state, 0.6)
+	await settle(0.25)
+	check(game.wetland._bird_visibility("baihe", 0) > 0.0 and game.wetland._bird_visibility("baihe", 0) < 1.0, "Bird loss must fade during card reveal")
+	check(game.wetland.house_progress[0] > 0.0 and game.wetland.house_progress[0] < 1.0, "House loss must animate during card reveal")
+	await settle(0.5)
+	check(game.wetland._bird_count("baihe") == 0 and is_zero_approx(game.wetland.house_progress[0]), "Animations must converge to zero counts")
+	GameState.settlement = 100
+	for sid in GameState.species_pop: GameState.species_pop[sid] = 100
+	game.wetland.sync_state({}, false)
+	check(game.wetland.house_target_count == 0, "Settlement must not override zero community")
+	for sid in GameState.SPECIES: check(game.wetland._bird_count(sid) == 0, "Species population must not override zero birds")
+	reset_fixture()
 	await capture("01-before-water")
 	var low_area: int = await rendered_water()
 	check(GameState.execute_action("water_replenish", "deep", true), "Deep water replenishment failed")

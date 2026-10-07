@@ -21,6 +21,9 @@ func capture(label: String) -> void:
 
 func close_popups() -> void:
 	for i in 12:
+		if game.has_method("_on_expedition_selected") and game.expedition_panel.visible:
+			if GameState.expedition.direction.is_empty(): game._on_expedition_selected("habitat")
+			elif GameState.expedition.needs_reward(GameState.turn): game._on_expedition_selected(GameState.expedition.reward_offers()[0])
 		if not game.popup_root.visible: break
 		game._on_popup_button()
 		await settle(0.1)
@@ -95,8 +98,8 @@ func _ready() -> void:
 	game._open_knowledge_viewer()
 	await settle(1.3)
 	check(game.knowledge_viewer.visible, "知识卡图鉴应能打开")
-	check(game.knowledge_grid.get_child_count() == 8, "图鉴应铺出 8 张知识卡，实际 %d" % game.knowledge_grid.get_child_count())
-	check(game.knowledge_count_label.text == "已收集 0 / 8", "计数应为 0 / 8，实际「%s」" % game.knowledge_count_label.text)
+	check(game.knowledge_grid.get_child_count() == Knowledge.total_count(), "图鉴应铺出全部知识卡")
+	check(game.knowledge_count_label.text == "已收集 0 / %d" % Knowledge.total_count(), "初始收藏计数应正确")
 	# 真实鼠标可能恰好停在某张卡上（会把底色换成悬停样式），查颜色前先复位
 	for v in game.knowledge_grid.get_children():
 		game._on_viewer_card_unhover(v)
@@ -124,7 +127,7 @@ func _ready() -> void:
 	Knowledge.unlock("bird_baihe")
 	game._open_knowledge_viewer()
 	await settle(1.3)
-	check(game.knowledge_count_label.text == "已收集 2 / 8", "计数应为 2 / 8，实际「%s」" % game.knowledge_count_label.text)
+	check(game.knowledge_count_label.text == "已收集 2 / %d" % Knowledge.total_count(), "收藏两张后的计数应正确")
 	for v in game.knowledge_grid.get_children():
 		game._on_viewer_card_unhover(v)
 	await settle(0.3)
@@ -169,6 +172,10 @@ func _ready() -> void:
 	check(game.card_infos.size() > 0, "Starting a run must deal cards")
 	check(is_equal_approx(game.wetland.camera_zoom_factor, game.wetland.GAME_CAMERA_ZOOM), "Game camera zoom must settle at its closer scale")
 	check(not get_viewport().get_visible_rect().intersects(creeper_screen_rect()), "Entire Creeper must be beyond the gameplay viewport")
+	# Allocation now pans away from the hand. Check all three original water
+	# junctions in the explicit full-view mode, including the northern offscreen one.
+	game.sandpan_view.toggle_view()
+	await settle(0.4)
 	await RenderingServer.frame_post_draw
 	var terrain_frame: Image = game.wetland.terrain_viewport.get_texture().get_image()
 	# These mapped-water points used to be covered by sand from the added river banks.
@@ -176,6 +183,8 @@ func _ready() -> void:
 		var pixel: Vector2 = game.wetland.map_camera.unproject_position(game.wetland._ground_position(junction) + Vector3(0, 0.01, 0)).round()
 		var color := terrain_frame.get_pixel(int(pixel.x), int(pixel.y))
 		check(color.b > color.g and color.g > color.r, "River/lake junction must render water blue instead of a sand divider")
+	game.sandpan_view.toggle_view()
+	await settle(0.4)
 	var wildlife: Control = game.wetland.get_node("Wildlife")
 	var habitat := Vector2(0.4, 0.6)
 	var screen_anchor: Vector2 = wildlife.get_transform() * game.wetland._wildlife_point(habitat)
@@ -251,12 +260,12 @@ func _ready() -> void:
 	var probe_info: Dictionary = game.card_infos[game.card_infos.size() - 1]
 	var probe_panel: PanelContainer = probe_info["panel"]
 	check(probe_panel.material is ShaderMaterial, "手牌应挂上陀螺仪材质")
-	var pc: Vector2 = probe_panel.get_global_rect().get_center()
+	var pc: Vector2 = game._card_gyro_center(probe_panel)
 	# 注入一个偏离卡片中心的悬停点（右上 40, -30），倾斜才有非零分量
 	for i in 24:
 		game._update_card_hover(0.05, pc + Vector2(40, -30))
 	# 抬起动画会把这 24 帧里的牌挪走，中心要在走完之后重新取
-	pc = probe_panel.get_global_rect().get_center()
+	pc = game._card_gyro_center(probe_panel)
 	var pmat: ShaderMaterial = probe_panel.material
 	var tx: float = pmat.get_shader_parameter("tilt_x")
 	var ty: float = pmat.get_shader_parameter("tilt_y")
@@ -367,6 +376,7 @@ func _ready() -> void:
 	get_window().size = Vector2i(1600, 900)
 	await settle(0.8)
 	await capture("12-large-window")
+	check(not get_viewport().get_visible_rect().intersects(creeper_screen_rect()), "Large-window gameplay must leave the entire Creeper outside")
 	# ---------------- 游戏内收集 → 图鉴解锁 的链路 ----------------
 	# 走真正的 _show_knowledge（玩家弹知识卡时实际走的那条路径），
 	# 验「弹出来了 = 收进收藏了」，再回主页图鉴确认它点亮。
@@ -383,15 +393,11 @@ func _ready() -> void:
 	await settle(0.7)
 	game._open_knowledge_viewer()
 	await settle(1.3)
-	check(game.knowledge_count_label.text == "已收集 1 / 8", "图鉴计数应变成 1 / 8，实际「%s」" % game.knowledge_count_label.text)
+	check(game.knowledge_count_label.text == "已收集 1 / %d" % Knowledge.total_count(), "触发收藏后的计数应正确")
 	await capture("13-knowledge-in-game-unlock")
 	game._close_knowledge_viewer()
 	await settle(0.4)
-	print("VISUAL_SMOKE: ", "PASS" if failures.is_empty() else "FAIL",
-		" (", failures.size(), " failures / ", checks, " checks)")
-
 	# ---------------- 多分辨率下的彩蛋可见性（朋友版）----------------
-	check(not get_viewport().get_visible_rect().intersects(creeper_screen_rect()), "Large-window gameplay must leave the entire Creeper outside")
 	# Returning to the menu reveals the same physical clearing as the camera retreats.
 	game._pause_game()
 	game._on_pause_exit()
@@ -412,4 +418,6 @@ func _ready() -> void:
 
 	scene.queue_free()
 	await get_tree().process_frame
+	print("VISUAL_SMOKE: ", "PASS" if failures.is_empty() else "FAIL",
+		" (", failures.size(), " failures / ", checks, " checks)")
 	get_tree().quit(0 if failures.is_empty() else 1)

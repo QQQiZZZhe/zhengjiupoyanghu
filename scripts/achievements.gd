@@ -103,6 +103,7 @@ const LIST := [
 	},
 	{
 		"id": "rigged",
+		"hidden": true,
 		"name": "被做局了",
 		"desc": "在噩梦模式下第 1 或第 2 回合就被撤换 —— 这局从发牌起就没打算让你赢",
 		"icon": DICE_GRID,
@@ -113,6 +114,12 @@ const LIST := [
 		"desc": "打满 16 回合通关，且全程平均每回合花费不超过 40 万",
 		"icon": COIN_GRID,
 	},
+	{
+		"id": "ecology_expert",
+		"name": "生态专家",
+		"desc": "收集全部知识卡，掌握鄱阳湖的生态与保护知识",
+		"icon": MEDAL_GRID,
+	},
 ]
 
 var _unlocked: Dictionary = {}
@@ -120,6 +127,23 @@ var _unlocked: Dictionary = {}
 
 func _ready() -> void:
 	_load()
+	# Knowledge 位于此单例之后加载，等它准备好再订阅并补查已有收藏。
+	call_deferred("_watch_knowledge")
+
+
+func _watch_knowledge() -> void:
+	if not Knowledge.card_collected.is_connected(_on_knowledge_collected):
+		Knowledge.card_collected.connect(_on_knowledge_collected)
+	check_knowledge_completion()
+
+
+func _on_knowledge_collected(_card_id: String) -> void:
+	check_knowledge_completion()
+
+
+func check_knowledge_completion() -> void:
+	if Knowledge.total_count() > 0 and Knowledge.collected_count() == Knowledge.total_count():
+		try_unlock("ecology_expert")
 
 
 # ==================== 持久化 ====================
@@ -161,6 +185,14 @@ func unlocked_count() -> int:
 		if is_unlocked(str(a["id"])):
 			n += 1
 	return n
+
+
+func visible_list() -> Array:
+	var visible: Array = []
+	for achievement in LIST:
+		if not bool(achievement.get("hidden", false)) or is_unlocked(str(achievement["id"])):
+			visible.append(achievement)
+	return visible
 
 
 func find(achievement_id: String) -> Dictionary:

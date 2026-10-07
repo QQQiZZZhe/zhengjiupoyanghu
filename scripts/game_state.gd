@@ -19,6 +19,84 @@ const SEASON_TAGLINE := {
 	"winter": "碟形湖登场，人鸟面对面",
 }
 
+# 0–100 水文指数，非实测米数。区间端点包含在内，各季重叠以留出调度空间。
+const WATER_SEASON_RULES := {
+	"spring": {"low": 48, "high": 62, "drift": [3, 6], "theme": "涨水育苗、鱼类繁殖",
+		"low_loss": {"vegetation": 2, "water_quality": 1, "fish": 2},
+		"high_loss": {"vegetation": 3, "fish": 1}},
+	"summer": {"low": 58, "high": 74, "drift": [5, 9], "theme": "丰水连通、预留防洪空间",
+		"low_loss": {"vegetation": 3, "water_quality": 2, "fish": 3},
+		"high_loss": {"vegetation": 3, "water_quality": 1, "community": 1}},
+	"autumn": {"low": 44, "high": 60, "drift": [-8, -4], "theme": "渐次退水、露滩备食",
+		"low_loss": {"vegetation": 2, "water_quality": 1, "fish": 2, "birds": 1},
+		"high_loss": {"vegetation": 2, "birds": 2}},
+	"winter": {"low": 36, "high": 50, "drift": [-6, -3], "theme": "保留浅水、守护越冬觅食地",
+		"low_loss": {"vegetation": 2, "water_quality": 1, "fish": 1, "birds": 2},
+		"high_loss": {"vegetation": 2, "birds": 3}},
+}
+const WATER_PRESSURE_SPAN := 10.0
+const WATER_PRESSURE_CAP := 3.0
+const HYDRO_YEAR_SHIFT := 1
+# 高难度收窄管理窗口；洪旱损失仍独立按难度倍率计算。
+const WATER_RANGE_INSET := [0, 0, 1, 2]
+
+## 年内来水偏差保持四季连续，独立随机流；可从种子重建，预览/读档不掷新天气。
+func year_hydrology(at_turn: int = -1) -> Dictionary:
+	var t: int = turn if at_turn < 0 else at_turn
+	var year: int = int((maxi(1, t) - 1) / 4) + 1
+	var weather_rng := RandomNumberGenerator.new()
+	weather_rng.seed = run_seed + year * 104729 + 0x57415445
+	var roll := weather_rng.randi_range(0, 99)
+	var shift := -HYDRO_YEAR_SHIFT if roll < 30 else (HYDRO_YEAR_SHIFT if roll >= 70 else 0)
+	return {"year": year, "shift": shift, "name": "偏旱年" if shift < 0 else ("偏湿年" if shift > 0 else "平水年")}
+
+func water_drift_range(season: String = "", at_turn: int = -1) -> Array:
+	var base: Array = water_reference(season)["drift"]
+	var shift: int = int(year_hydrology(at_turn)["shift"])
+	return [int(base[0]) + shift, int(base[1]) + shift]
+
+func water_reference(season: String = "") -> Dictionary:
+	var rule: Dictionary = WATER_SEASON_RULES.get(current_season() if season.is_empty() else season, WATER_SEASON_RULES["spring"]).duplicate(true)
+	var inset: int = WATER_RANGE_INSET[difficulty]
+	rule["low"] = int(rule["low"]) + inset
+	rule["high"] = int(rule["high"]) - inset
+	return rule
+
+## 每偏离 10 点为 1 倍，连续增加，最多 3 倍；难度只放大生态损失，不放大退水。
+func water_pressure(level: int, season: String = "") -> Dictionary:
+	var rule := water_reference(season)
+	var low: int = int(rule["low"])
+	var high: int = int(rule["high"])
+	var side := "low" if level < low else ("high" if level > high else "safe")
+	var deviation: int = maxi(low - level, level - high) if side != "safe" else 0
+	var multiplier: float = minf(WATER_PRESSURE_CAP, deviation / WATER_PRESSURE_SPAN)
+	var effects: Dictionary = {}
+	if side != "safe":
+		for metric in rule[side + "_loss"]:
+			var loss: int = roundi(float(rule[side + "_loss"][metric]) * multiplier * float(PENALTY_MULT[difficulty]))
+			# 刚越界时至少损失 1 点植被；其他影响按整数精度渐次出现。
+			if metric == "vegetation": loss = maxi(1, loss)
+			if loss > 0: effects[metric] = -loss
+	return {"low": low, "high": high, "side": side, "deviation": deviation,
+		"multiplier": multiplier, "effects": effects}
+
+## 洪旱损害取行动后与自然涨落后两端的平均暴露；自然恢复减轻压力，不能追溯抹去损害。
+func water_turn_pressure(before: int, after: int, season: String = "") -> Dictionary:
+	var start := water_pressure(before, season)
+	var finish := water_pressure(after, season)
+	var rule := water_reference(season)
+	var low_mult: float = ((float(start["multiplier"]) if start["side"] == "low" else 0.0) + (float(finish["multiplier"]) if finish["side"] == "low" else 0.0)) * 0.5
+	var high_mult: float = ((float(start["multiplier"]) if start["side"] == "high" else 0.0) + (float(finish["multiplier"]) if finish["side"] == "high" else 0.0)) * 0.5
+	var effects: Dictionary = {}
+	for metric in METRIC_NAMES:
+		var base_loss: float = float(rule["low_loss"].get(metric, 0)) * low_mult + float(rule["high_loss"].get(metric, 0)) * high_mult
+		var loss: int = roundi(base_loss * float(PENALTY_MULT[difficulty]))
+		if metric == "vegetation" and low_mult + high_mult > 0.0: loss = maxi(1, loss)
+		if loss > 0: effects[metric] = -loss
+	return {"low": rule["low"], "high": rule["high"], "effects": effects,
+		"side": "low" if low_mult > high_mult else ("high" if high_mult > 0.0 else "safe"),
+		"multiplier": low_mult + high_mult, "before": before, "after": after}
+
 # ==================== 紧急调度 / 刷新手牌 ====================
 # 紧急调度：花固定一笔钱，直接从**当季卡池**里点名一张牌当场使用 ——
 # 解决「眼看着要崩、手上偏偏没有那张救命的牌」。定位是容错阀而不是主力：
@@ -53,15 +131,7 @@ enum Difficulty { EASY, NORMAL, HARD, NIGHTMARE }
 const FAILURE_THRESHOLD := { Difficulty.EASY: 20, Difficulty.NORMAL: 30, Difficulty.HARD: 40, Difficulty.NIGHTMARE: 45 }   # 判负阈值
 const PENALTY_MULT := { Difficulty.EASY: 1.0, Difficulty.NORMAL: 1.5, Difficulty.HARD: 2.0, Difficulty.NIGHTMARE: 2.0 }     # 扣分惩罚倍率
 
-# 困难档「常规随机扣分」的下限额外抬这么多点，**在难度负向倍率之后**生效。
-# 目的：削弱「随机到最坏值 + 指标恰好贴线 = 暴毙」的挫败感。
-#
-# ⚠ 为什么不直接改原始下界（-5 → -4）：
-#   那样会被困难档的 ×2.0 放大成 +2（-10 → -8），而且会让困难档的最坏水位
-#   波动**和普通档一样都是 -8**，把两档的区别一并削掉。
-#   在倍率之后再抬 1 才是字面意义上的「上调一分」——
-#   困难档最坏 -9 仍然比普通档的 -8 更凶，难度梯度保住。
-const HARD_ROUTINE_FLOOR_BONUS := 1
+# 0.1.3：水位退出致死判定；难度倍率只放大生态损失，水文涨落不放大。
 const FUNDING_PENALTY := { Difficulty.EASY: 0, Difficulty.NORMAL: 20, Difficulty.HARD: 35, Difficulty.NIGHTMARE: 35 }       # 每回合拨款削减（万）
 
 # ==================== 指标 → 每回合拨款（2026-09-28 第二条玩测反馈）====================
@@ -108,18 +178,16 @@ func difficulty_name() -> String:
 #   水质 无监测每回合 -2~-4、开局离致死线只有 9.3；社区信任 平时不衰减、缓冲 19.4。
 # 共用一条线时死因会高度集中（简单档 89% 死在水质+植被，社区信任只占 1%）。
 # 2026-09-28 起**已启用**（按玩测可再调；调完重跑 版本更新0.0.3.md 第五节的验证）：
-#   "water_level":     -3,   # 单回合波动最大（困难档 -10..+3），线略往下挪
 #   "water_quality":   -5,   # 无条件衰减 + 缓冲最小，最宽容，避免「忘监测就必死」
 #   "vegetation":      +3,   # 候鸟与鱼类的上游，略严
 #   "fish":            -5,   # 同样无条件衰减（无巡护 -1~-2/回合）
 #   "birds":            0,   # 恢复最慢、条件触发，维持原线
 #   "community":      +10,   # 平时不衰减（缓冲 19.4），抬线让「牺牲社区」真的会输
-# 生效后的六条致死线（顺序：水位/水质/植被/鱼类/候鸟/社区）：
-#   简单 17/15/23/15/20/30
-#   普通 27/25/28/25/30/40   ← 植被 33→28，见下面的 FAILURE_THRESHOLD_EXTRA
-#   困难 37/35/38/35/40/50   ← 植被 43→38
-# 想整体关掉、回到「六项共用一条难度线」→ 把下面改回 {}
-const FAILURE_THRESHOLD_OFFSET := {"water_level": -3, "water_quality": -5, "vegetation": 3, "fish": -5, "birds": 0, "community": 10}
+# 生效后的五条致死线（顺序：水质/植被/鱼类/候鸟/社区；水位无致死线）：
+#   简单 15/23/15/20/30
+#   普通 25/28/25/30/40
+#   困难 35/38/35/40/50
+const FAILURE_THRESHOLD_OFFSET := {"water_quality": -5, "vegetation": 3, "fish": -5, "birds": 0, "community": 10}
 
 # 在 FAILURE_THRESHOLD_OFFSET 之上、**只对特定难度**再叠加的调整。
 # 用来做「普通/困难太严、简单档不动」这类微调 —— 直接改 FAILURE_THRESHOLD_OFFSET
@@ -157,7 +225,7 @@ const TIER_COST_MULT := {"basic": 0.5, "effective": 1.0, "deep": 2.0}
 const TIER_NAMES := {"basic": "基础投入", "effective": "有效投入", "deep": "深度投入"}
 
 # ==================== 物种数据 ====================
-# 每个物种有生态角色；数量受相关指标与行动联动。地图上按数量显示会动的个体。
+# 每个物种有生态角色；物种指数受相关指标与行动联动。沙盘鸟类总数由候鸟总值决定。
 const SPECIES := {
 	"baihe": {
 		"name": "白鹤", "color": Color(0.97, 0.97, 0.95),
@@ -484,6 +552,18 @@ const ACTION_CARDS := [
 			"deep":      {"effects": [{"metric": "water_level", "delta": 15, "delay": 0}, {"metric": "water_quality", "delta": 5, "delay": 0}, {"metric": "community", "delta": -2, "delay": 0}]},
 		},
 		"side_note": {"deep": "调水涉及上下游利益，社区信任 -2"},
+	},
+	{
+		"id": "flood_release", "name": "分洪退水调度", "category": "manage",
+		"season": "all", "tags": ["洪水调度"],
+		"desc": "协调闸坝泄水与分洪通道，降低过高水位，让淹没的草场和浅滩重新露出。四季可用，低水位时慎用。",
+		"cost": 30,
+		"tiers": {
+			"basic": {"effects": [{"metric": "water_level", "delta": -6, "delay": 0}, {"metric": "community", "delta": -1, "delay": 0}]},
+			"effective": {"effects": [{"metric": "water_level", "delta": -12, "delay": 0}, {"metric": "community", "delta": -2, "delay": 0}]},
+			"deep": {"effects": [{"metric": "water_level", "delta": -20, "delay": 0}, {"metric": "community", "delta": -3, "delay": 0}]},
+		},
+		"side_note": {"deep": "集中分洪占用沿岸作业空间，社区信任 -3；退水过度会加重干旱"},
 	},
 	{
 		"id": "wetland_restore", "name": "退田还湿（湿地生态修复）", "category": "ecology",
@@ -860,6 +940,15 @@ const ACTION_CARDS := [
 
 # ==================== 知识卡数据 ====================
 const KNOWLEDGE_CARDS := {
+	"egg_dixinhu": {
+		"name": "狄鑫斛", "category": "彩蛋", "trigger": "random_only",
+		"random_only": true, "condition": "", "tags": [], "action_ids": [], "seasons": [],
+		"short": "碟形湖讲解图里的小人，悄悄走进了知识卡。",
+		"ecology": "名字取自“碟形湖”，是制作组的创作彩蛋，并非真实物种。",
+		"threat": "别把这个小人的名字当成地理术语哦！",
+		"management": "想了解真正的碟形湖，请翻阅“碟形湖：大湖里的小湖”。",
+		"creator": "Oliveira", "origin": "开发者 Oliveira 为制作组成员绘制的碟形湖讲解图",
+	},
 	"plant_kucao": {
 		"name": "苦草", "category": "植物", "trigger": "observation",
 		"short": "鄱阳湖湖区分布面积最大的沉水植物。",
@@ -932,6 +1021,326 @@ const KNOWLEDGE_CARDS := {
 		"condition": "community < 40",
 		"tags": ["社区补偿", "产业转产"],
 	},
+	"geo_poyang": {
+		"name": "认识鄱阳湖", "category": "地理", "trigger": "observation",
+		"short": "鄱阳湖位于江西，是中国最大的淡水湖。",
+		"ecology": "它与长江相连，是许多水生生物和候鸟的家园。",
+		"threat": "污染和湿地破坏会影响湖泊中的生命。",
+		"management": "从认识家乡的河湖开始，参与保护水环境。",
+		"condition": "turn == 1", "tags": ["公众参与"],
+		"source_title": "中科院地理所：鄱阳湖",
+		"source_url": "https://igsnrr.cas.cn/cbkx/kpyd/zgdl/cnszy/202009/t20200910_5692411.html",
+	},
+	"geo_five_rivers": {
+		"name": "五河汇入一湖", "category": "地理", "trigger": "observation",
+		"short": "赣江、抚河、信江、饶河和修水汇入鄱阳湖。",
+		"ecology": "这些河流把流域里的来水送到湖中，再与长江相接。",
+		"threat": "上游污染可能沿河进入湖区。",
+		"management": "保护湖泊也要保护上游河流，治理需要多地合作。",
+		"condition": "", "tags": ["水体治理", "社区参与"], "action_ids": ["lake_chief", "nonpoint_intercept"],
+		"source_title": "中科院：科普湿地",
+		"source_url": "https://neigae.cas.cn/klwee/qt/kpsd/201604/t20160421_7562770.html",
+	},
+	"geo_hukou": {
+		"name": "湖口：江湖相连的通道", "category": "地理", "trigger": "observation",
+		"short": "鄱阳湖通过北部的湖口与长江相连。",
+		"ecology": "江湖之间的水流联系也是生物迁移的重要条件。",
+		"threat": "人为阻隔会改变水流与生物的通行条件。",
+		"management": "研究江湖联系后再开展水工程，保护必要的通道。",
+		"condition": "", "tags": ["水工调控", "增殖放流"], "action_ids": ["sluice_fry", "fishway", "water_replenish"],
+		"source_title": "中科院地理所：鄱阳湖",
+		"source_url": "https://igsnrr.cas.cn/cbkx/kpyd/zgdl/cnszy/202009/t20200910_5692411.html",
+	},
+	"geo_seasonal_lake": {
+		"name": "会变大小的湖", "category": "地理", "trigger": "observation",
+		"short": "鄱阳湖的湖面会随丰水期和枯水期发生变化。",
+		"ecology": "涨水时湖面扩大，退水时洲滩显露，生物利用的环境也随之改变。",
+		"threat": "把每次退水都当成灾害，会忽略自然的季节节律。",
+		"management": "连续观察水位与季节，分清正常变化和异常旱涝。",
+		"condition": "", "tags": ["补水调度", "科研监测"], "seasons": ["春", "夏", "秋", "冬"],
+		"source_title": "中科院地理所：鄱阳湖",
+		"source_url": "https://igsnrr.cas.cn/cbkx/kpyd/zgdl/cnszy/202009/t20200910_5692411.html",
+	},
+	"geo_saucer_lakes": {
+		"name": "碟形湖：大湖里的小湖", "category": "地理", "trigger": "observation",
+		"short": "湖区的部分浅洼地会在退水后成为相对独立的小湖。",
+		"ecology": "碟形湖与主湖的连接或分离，影响其中的水、植物和动物。",
+		"threat": "改变水文联系可能改变小湖原有的生态环境。",
+		"management": "因地制宜维护生态水位，保留不同类型的湿地生境。",
+		"condition": "", "tags": ["补水调度", "栖息地营造"], "action_ids": ["water_control", "water_comanage"], "seasons": ["秋"],
+		"source_title": "中科院：通江湖泊水文过程研究",
+		"source_url": "https://niglas.cas.cn/xwdt_1_1/yjjz/202005/t20200528_5599537.html",
+	},
+	"geo_flood_storage": {
+		"name": "湖泊如何调蓄洪水", "category": "地理", "trigger": "observation",
+		"short": "湖泊能容纳来水，参与调节河湖水量。",
+		"ecology": "鄱阳湖接纳五河来水，经过调蓄后与长江相接。",
+		"threat": "侵占湖泊空间会影响湖泊原有的功能。",
+		"management": "保护湖泊与湿地空间，防洪要考虑整个流域。",
+		"condition": "", "tags": ["生态修复", "补水调度"], "action_ids": ["wetland_restore", "water_storage"], "seasons": ["夏"],
+		"source_title": "中科院地理所：鄱阳湖",
+		"source_url": "https://igsnrr.cas.cn/cbkx/kpyd/zgdl/cnszy/202009/t20200910_5692411.html",
+	},
+	"animal_finless_porpoise": {
+		"name": "长江江豚", "category": "水生动物", "trigger": "observation",
+		"short": "江豚生活在水里，却是哺乳动物，幼豚靠母乳成长。",
+		"ecology": "鄱阳湖是长江江豚的重要家园，它需要安全的水域。",
+		"threat": "水下噪声和人类活动可能影响江豚及幼豚。",
+		"management": "保护栖息水域，支持巡护、监测和减少干扰。",
+		"condition": "", "tags": ["执法巡护", "科研监测"], "action_ids": ["patrol", "research"],
+		"source_title": "中科院水生所：新生长江江豚",
+		"source_url": "https://ihb.cas.cn/xwdt/zhxw/202406/t20240621_7193987.html",
+	},
+	"bird_white_naped_crane": {
+		"name": "白枕鹤", "category": "鸟类", "trigger": "observation",
+		"short": "白枕鹤身体多为灰色，喉部和枕部为白色。",
+		"ecology": "这种大型涉禽会迁徙，利用湿地和部分农田栖息觅食。",
+		"threat": "栖息地中的干扰会影响机警的鹤类。",
+		"management": "远距离观察外形，不为了拍照追赶鸟群。",
+		"condition": "", "tags": ["栖息地营造", "公众参与"], "action_ids": ["habitat_protect", "education"], "seasons": ["冬"],
+		"source_title": "国家林草局：白枕鹤",
+		"source_url": "https://www.forestry.gov.cn/c/www/xtq/26044.jhtml",
+	},
+	"bird_wintering_geese": {
+		"name": "鄱阳湖的雁类", "category": "鸟类", "trigger": "observation",
+		"short": "豆雁、鸿雁和白额雁等雁类会到鄱阳湖越冬。",
+		"ecology": "不同雁类在不同子湖活动，调查能帮助了解它们的分布。",
+		"threat": "只把所有雁记成一种，会遗漏物种之间的差异。",
+		"management": "借助图鉴与望远镜辨认，记录时间、地点和种类。",
+		"condition": "", "tags": ["科研监测", "栖息地营造"], "action_ids": ["research", "habitat_protect"], "seasons": ["冬"],
+		"source_title": "中科院：鄱阳湖越冬雁类研究",
+		"source_url": "https://igsnrr.cas.cn/sourcedb/zw/lw/202504/t20250409_7592059.html",
+	},
+	"plant_sedge": {
+		"name": "苔草：草洲上的绿色食堂", "category": "植物", "trigger": "observation",
+		"short": "洲滩上的嫩苔草是部分雁鸭类的重要食物。",
+		"ecology": "草的生长时间和嫩老程度会影响候鸟能否获得适口食物。",
+		"threat": "异常干旱可能让草提前生长、老化，错过候鸟的需求。",
+		"management": "监测草的生长与候鸟食性，由专业人员制定食源管理方案。",
+		"condition": "", "tags": ["生态修复", "栖息地营造"], "action_ids": ["seed_bank", "bird_canteen"], "seasons": ["秋", "冬"],
+		"source_title": "国家林草局：守护候鸟迁飞栖息地",
+		"source_url": "https://www.forestry.gov.cn/c/www/lcdt/77840.jhtml",
+	},
+	"plant_reeds": {
+		"name": "芦苇与南荻", "category": "植物", "trigger": "observation",
+		"short": "鄱阳湖较高的洲滩上分布着芦苇、荻等植物。",
+		"ecology": "它们与低处的苔草、水生植物组成不同的植被群落。",
+		"threat": "把不同高度的湿地改成同一种环境，会减少生境差异。",
+		"management": "修复时观察地势和水位，保留自然植被的分布带。",
+		"condition": "", "tags": ["生态修复", "科研监测"], "action_ids": ["veg_restore", "wetland_restore"],
+		"source_title": "生态学报：鄱阳湖湿地植被分布",
+		"source_url": "https://www.ecologica.cn/stxb/article/abstract/stxb201307301983?st=search",
+	},
+	"plant_lotus": {
+		"name": "莲与藕的秘密", "category": "植物", "trigger": "observation",
+		"short": "荷花、莲叶和藕属于同一种植物，藕是地下茎。",
+		"ecology": "莲是水生植物，膨大的地下茎也是它的植物器官。",
+		"threat": "只认识花和菜肴，容易忽略水生植物的完整结构。",
+		"management": "观察花、叶和茎的关系，在允许的地方开展自然学习。",
+		"condition": "", "tags": ["公众参与", "生态修复"], "action_ids": ["education", "bird_canteen"], "seasons": ["夏"],
+		"source_title": "中科院华南植物园：莲的心事",
+		"source_url": "https://scbg.cas.cn/hx/201908/t20190803_6734975.html",
+	},
+	"mech_fish_migration": {
+		"name": "鱼儿的江湖旅行", "category": "机制", "trigger": "observation",
+		"short": "部分鱼类在江里繁殖，再到湖泊里摄食和长大。",
+		"ecology": "青、草、鲢、鳙等江湖洄游性鱼类需要连通的河湖环境。",
+		"threat": "通道受阻会影响亲鱼迁移和鱼苗进入湖泊。",
+		"management": "保护江湖联系、产卵环境和育幼环境。",
+		"condition": "", "tags": ["增殖放流", "水工调控"], "action_ids": ["sluice_fry", "fishway", "spawning_ground"], "seasons": ["春"],
+		"source_title": "中科院水生所：鄱阳湖与鱼类资源",
+		"source_url": "https://www.ihb.cas.cn/kxcb_1/kxcb/202103/t20210325_5984541.html",
+	},
+	"mech_vegetation_zones": {
+		"name": "湿地植物的分布带", "category": "机制", "trigger": "observation",
+		"short": "不同地势和水分条件下，湿地植物的分布并不一样。",
+		"ecology": "从较低的湖区到较高的洲滩，可见水生植物、苔草和芦苇等群落。",
+		"threat": "忽略生长环境、盲目补种，可能不适合当地水文条件。",
+		"management": "先调查水位与地势，再选择适宜的植物和修复位置。",
+		"condition": "", "tags": ["生态修复", "科研监测"], "action_ids": ["submerged_planting", "veg_restore", "research"],
+		"source_title": "生态学报：鄱阳湖湿地植被分布",
+		"source_url": "https://www.ecologica.cn/stxb/article/abstract/stxb201307301983?st=search",
+	},
+	"mech_food_web": {
+		"name": "湿地里的食物联系", "category": "机制", "trigger": "observation",
+		"short": "水草、鱼虾和水鸟通过食物关系联系在一起。",
+		"ecology": "改善湿地生境、恢复食物供应，有助于水鸟栖息觅食。",
+		"threat": "只关注某一种动物，可能忽略它赖以生存的食物和环境。",
+		"management": "一起保护生境和食源，观察治理带来的连锁变化。",
+		"condition": "", "tags": ["生态修复", "栖息地营造"], "action_ids": ["veg_restore", "spawning_ground", "habitat_protect"],
+		"source_title": "国家林草局：多方协力守护候鸟家园",
+		"source_url": "https://www.forestry.gov.cn/c/www/dzbhdt/657022.jhtml",
+	},
+	"mech_feeding_depth": {
+		"name": "水鸟需要适宜的水深", "category": "机制", "trigger": "decision",
+		"short": "水里有食物，还要看鸟能不能够得着。",
+		"ecology": "浅水、湿泥滩和草洲为不同水鸟提供不同的觅食空间。",
+		"threat": "异常水位和退水时间会改变觅食环境与食物供给。",
+		"management": "依据水鸟需求科学调水，保留多样的觅食环境。",
+		"condition": "", "tags": ["补水调度", "栖息地营造"], "action_ids": ["water_control", "water_schedule", "habitat_protect"],
+		"source_title": "国家林草局：守护候鸟迁飞栖息地",
+		"source_url": "https://www.forestry.gov.cn/c/www/lcdt/77840.jhtml",
+	},
+	"case_extreme_drought": {
+		"name": "极端干旱的连锁影响", "category": "案例", "trigger": "consequence",
+		"short": "异常缺水会同时改变水面、植物和候鸟的食物。",
+		"ecology": "2022年的极端干旱让鄱阳湖部分传统越冬生境发生变化。",
+		"threat": "食源减少与栖息环境改变会给越冬候鸟带来困难。",
+		"management": "监测旱情，结合生态补水和补充食源开展应对。",
+		"condition": "water_level < 40", "tags": ["补水调度", "栖息地营造"], "action_ids": ["water_replenish", "water_storage"],
+		"source_title": "国家林草局：守护候鸟迁飞栖息地",
+		"source_url": "https://www.forestry.gov.cn/c/www/lcdt/77840.jhtml",
+	},
+	"mech_micro_wetlands": {
+		"name": "小微湿地帮助净水", "category": "机制", "trigger": "decision",
+		"short": "小水塘和河沟也能参与水环境保护。",
+		"ecology": "水生植物可帮助拦截、过滤污染物，增强水体自净能力。",
+		"threat": "持续排入污染物会给小微湿地增加负担。",
+		"management": "把源头减污、污水处理和湿地修复结合起来。",
+		"condition": "", "tags": ["水体治理", "社区参与"], "action_ids": ["floating_island", "sewage_comanage"],
+		"source_title": "国家林草局：一泓碧水润泽万物",
+		"source_url": "https://www.forestry.gov.cn/c/www/sdfc/598794.jhtml",
+	},
+	"mech_wetland_carbon": {
+		"name": "湿地也能储存碳", "category": "机制", "trigger": "observation",
+		"short": "湿地植被参与固碳，也是碳循环的一部分。",
+		"ecology": "鄱阳湖碟形湖研究发现，水文连通条件会影响植被固碳能力。",
+		"threat": "不能简单认为连通越强、固碳就一定越多。",
+		"management": "长期监测不同湿地，依据证据制定保护方案。",
+		"condition": "", "tags": ["科研监测", "生态修复"], "action_ids": ["research", "wetland_restore"], "level": "初中拓展",
+		"source_title": "中科院：水文连通性与湿地植被固碳",
+		"source_url": "https://www.niglas.cas.cn/xwdt_1_1/yjjz/202601/t20260126_8118721.html",
+	},
+	"mech_runoff_pollution": {
+		"name": "雨水带来的面源污染", "category": "机制", "trigger": "consequence",
+		"short": "污染不只来自排污口，也可能分散在农田等区域。",
+		"ecology": "肥料等物质可随径流进入水体，增加湖泊的污染负荷。",
+		"threat": "过量施肥及管理不当会加重农业面源污染。",
+		"management": "科学减量施肥，结合拦截带和流域治理减少污染输入。",
+		"condition": "", "tags": ["水体治理", "生态修复"], "action_ids": ["nonpoint_intercept", "lake_chief"], "seasons": ["夏"],
+		"source_title": "生态环境部：鄱阳湖保护修复问题",
+		"source_url": "https://www.mee.gov.cn/ywgz/zysthjbhdc/dcjl/202405/t20240517_1073473.shtml",
+	},
+	"manage_flyway": {
+		"name": "候鸟迁飞通道", "category": "管理策略", "trigger": "decision",
+		"short": "候鸟的一次迁徙，需要一路上许多地方共同守护。",
+		"ecology": "繁殖地、停歇地和越冬地构成迁徙生活中的不同环节。",
+		"threat": "其中一个环节受损，也可能影响整条迁徙路线。",
+		"management": "各地共享监测信息，协同保护迁徙沿线生境。",
+		"condition": "", "tags": ["栖息地营造", "执法巡护"], "action_ids": ["migration_corridor"], "seasons": ["春", "秋"],
+		"source_title": "国家林草局：多方协力守护候鸟家园",
+		"source_url": "https://www.forestry.gov.cn/c/www/dzbhdt/657022.jhtml",
+	},
+	"mech_bird_rings": {
+		"name": "鸟脚上的“身份证”", "category": "机制", "trigger": "observation",
+		"short": "科研人员给部分鸟佩戴脚环，用来识别个体。",
+		"ecology": "在鄱阳湖重新观察到带环白枕鹤，能为迁徙研究提供线索。",
+		"threat": "追赶、捕捉鸟类查看脚环，会干扰它们。",
+		"management": "远距离记录可见环号，向专业机构报告；环志由专业人员开展。",
+		"condition": "", "tags": ["科研监测", "公众参与"], "action_ids": ["research", "education"],
+		"source_title": "国家林草局：白枕鹤环志与协作保护",
+		"source_url": "https://www.forestry.gov.cn/c/www/dzbhdt/657022.jhtml",
+	},
+	"manage_bird_surveys": {
+		"name": "怎样调查候鸟", "category": "管理策略", "trigger": "decision",
+		"short": "连续调查比一次看到多少只鸟更能说明变化。",
+		"ecology": "定期调查、视频和声纹识别能帮助了解鸟类分布。",
+		"threat": "调查范围和记录方式不一致，会增加比较的困难。",
+		"management": "按规范记录时间、地点、种类与数量，使用科技手段辅助监测。",
+		"condition": "", "tags": ["科研监测", "执法巡护"], "action_ids": ["research", "smart_patrol"],
+		"source_title": "国家林草局：鄱阳湖候鸟保护工作",
+		"source_url": "https://www.forestry.gov.cn/c/www/dzbhdt/655834.jhtml",
+	},
+	"manage_fishing_ban": {
+		"name": "十年禁渔保护了什么", "category": "管理策略", "trigger": "decision",
+		"short": "禁渔为鱼类等水生生物恢复提供了机会。",
+		"ecology": "鄱阳湖禁捕后的监测记录到鱼类资源恢复，也关注江豚变化。",
+		"threat": "非法捕捞会损害恢复中的水生生物资源。",
+		"management": "支持禁捕巡护与长期监测，也帮助退捕渔民转产就业。",
+		"condition": "", "tags": ["执法巡护", "产业转型"], "action_ids": ["patrol", "fisher_retrain"],
+		"source_title": "国家林草局：一泓碧水润泽万物",
+		"source_url": "https://www.forestry.gov.cn/c/www/sdfc/598794.jhtml",
+	},
+	"protect_scientific_release": {
+		"name": "科学放流，拒绝随意放生", "category": "保护行动", "trigger": "decision",
+		"short": "把动物放进水里，不一定是在帮助自然。",
+		"ecology": "科学放流需要考虑物种与当地生态环境是否适宜。",
+		"threat": "向天然开放水域投放外来物种、杂交种等可能破坏生态。",
+		"management": "不自行放生宠物或外来鱼，参与由专业部门组织的科学活动。",
+		"condition": "", "tags": ["增殖放流", "物种防控"], "action_ids": ["fish_restock", "invasive_clear"],
+		"source_title": "农业农村部：推进长江十年禁渔工作",
+		"source_url": "https://yyj.moa.gov.cn/tzgg/202403/t20240322_6452083.htm",
+	},
+	"manage_bird_canteens": {
+		"name": "候鸟食堂怎样建", "category": "管理策略", "trigger": "decision",
+		"short": "保留稻谷、管理藕田等措施可提供候鸟补充食源。",
+		"ecology": "人工食源地可以帮助缓解候鸟食物不足。",
+		"threat": "候鸟进入农田觅食，也可能给农户带来损失。",
+		"management": "食源管理与生态补偿一起推进；游客不自行投喂。",
+		"condition": "", "tags": ["栖息地营造", "社区补偿"], "action_ids": ["bird_canteen", "bird_friendly"],
+		"source_title": "国家林草局：人鸟共处鄱阳湖",
+		"source_url": "https://www.forestry.gov.cn/c/www/dzbhdt/668059.jhtml",
+	},
+	"protect_birdwatching": {
+		"name": "文明观鸟", "category": "保护行动", "trigger": "decision",
+		"short": "欣赏鸟类，要把不打扰它们放在前面。",
+		"ecology": "远距离安静观察，能看到鸟类自然的生活状态。",
+		"threat": "追逐、投喂、无人机和闪光灯可能惊扰鸟群。",
+		"management": "遵守观鸟区规定，使用望远镜，不追鸟、不诱拍、不随意投喂。",
+		"condition": "", "tags": ["公众参与", "产业转产"], "action_ids": ["education", "ecotourism"],
+		"source_title": "吴城候鸟小镇：观鸟须知",
+		"source_url": "https://www.wchnxz.com/wap/notice.html?n=%E6%97%85%E6%B8%B8%E9%A1%BB%E7%9F%A5&num=4&pn=%E6%99%AF%E5%8C%BA%E5%AF%BC%E8%A7%88&ppn=%E9%A6%96%E9%A1%B5",
+	},
+	"protect_bird_rescue": {
+		"name": "发现伤病鸟怎么办", "category": "保护行动", "trigger": "decision",
+		"short": "发现伤病鸟，及时报告并联系专业救助人员。",
+		"ecology": "专业救助包括发现、响应、救治、康复和放归。",
+		"threat": "自行追捕、喂食或治疗，可能给鸟和自己带来风险。",
+		"management": "保持距离，告知监护人并记录位置，联系保护区或专业救助机构。",
+		"condition": "", "tags": ["应急救护", "公众参与"], "action_ids": ["rescue", "guard_team"],
+		"source_title": "国家林草局：鄱阳湖的候鸟救助",
+		"source_url": "https://www.forestry.gov.cn/c/www/dzbhdt/634206.jhtml",
+	},
+	"protect_wetland_tracks": {
+		"name": "草洲不是越野场", "category": "保护行动", "trigger": "decision",
+		"short": "湿地洲滩是生物的家园，不能当成随意行驶的空地。",
+		"ecology": "保护完整的湿地与安静的栖息环境，有助于候鸟越冬。",
+		"threat": "车辆碾压湿地等行为会破坏栖息环境。",
+		"management": "只在允许区域活动，不驾车进入草洲，支持保护区巡护。",
+		"condition": "", "tags": ["执法巡护", "公众参与"], "action_ids": ["patrol", "wetland_law", "obstruction_clear"],
+		"source_title": "国家林草局：鄱阳湖候鸟保护工作",
+		"source_url": "https://www.forestry.gov.cn/c/www/dzbhdt/655834.jhtml",
+	},
+	"case_entanglement": {
+		"name": "渔网和鱼线的隐患", "category": "案例", "trigger": "consequence",
+		"short": "水中的渔网和鱼线可能缠住江豚。",
+		"ecology": "鄱阳湖曾记录江豚因渔网和鱼线缠绕死亡的案例。",
+		"threat": "非法渔具不仅影响鱼类，也会伤害其他水生动物。",
+		"management": "发现可疑渔具及时报告，由专业巡护人员处理，不自行下水。",
+		"condition": "", "tags": ["执法巡护", "应急救护"], "action_ids": ["patrol", "obstruction_clear", "rescue"],
+		"source_title": "生态环境部：鄱阳湖保护修复问题",
+		"source_url": "https://www.mee.gov.cn/ywgz/zysthjbhdc/dcjl/202405/t20240517_1073473.shtml",
+	},
+	"manage_fisher_transition": {
+		"name": "从捕鱼人到护鱼员", "category": "管理策略", "trigger": "decision",
+		"short": "退捕渔民也可以成为水域的保护者。",
+		"ecology": "鄱阳湖周边有渔民转做巡护，原来的渔船成为巡护船。",
+		"threat": "保护措施如果忽略居民生计，会增加转型困难。",
+		"management": "结合培训、就业帮扶和管护岗位，让保护与生活相互支持。",
+		"condition": "", "tags": ["产业转型", "社区参与"], "action_ids": ["fisher_retrain", "eco_jobs", "industry_switch"],
+		"source_title": "国家林草局：一泓碧水润泽万物",
+		"source_url": "https://www.forestry.gov.cn/c/www/sdfc/598794.jhtml",
+	},
+	"mech_underwater_noise": {
+		"name": "水下也有噪声", "category": "机制", "trigger": "observation",
+		"short": "水下并不总是安静的，江豚依赖声音感知环境。",
+		"ecology": "江豚靠声音定位、寻找食物，听觉对它的生活很重要。",
+		"threat": "水下噪声可能影响江豚的健康和栖息地选择。",
+		"management": "开展声学监测，减少航运等活动对江豚的干扰。",
+		"condition": "", "tags": ["科研监测", "执法巡护"], "action_ids": ["research", "sand_mining"],
+		"source_title": "中科院水生所：江豚与水下噪声",
+		"source_url": "https://www.ihb.cas.cn/kxcb_1/cmsj/201211/t20121112_5735674.html",
+	},
 }
 
 # ==================== 危机事件池（肉鸽随机性核心）====================
@@ -952,7 +1361,7 @@ const CRISIS_BREATH_TURNS := 1
 const DEEP_WARN_RESEARCH := 8
 const CRISES := [
 	{
-		"id": "drought", "name": "极端干旱", "weight": 1.0, "cond": "water_level < 45",
+		"id": "drought", "name": "极端干旱", "weight": 1.0, "cond": "water_level < seasonal_low",
 		"cooldown": 5,   # 重事件：掉 14 水位，两次之间至少隔 5 回合
 		"needs": ["补水调度"],
 		"warn": "【自然预警】气象部门预报：未来一季降水显著偏少，湖区面临枯水风险。",
@@ -984,9 +1393,9 @@ const CRISES := [
 		"effects": [{"metric": "community", "delta": -7}, {"metric": "birds", "delta": -6}],
 	},
 	{
-		"id": "flood", "name": "汛期洪水", "weight": 0.8, "cond": "water_level > 60",
+		"id": "flood", "name": "汛期洪水", "weight": 0.8, "cond": "water_level > seasonal_high",
 		"cooldown": 6,   # 大戏一场就够：季节性洪水，一局最多两三次
-		"needs": ["生态修复", "栖息地营造"],
+		"needs": ["生态修复", "栖息地营造", "洪水调度"],
 		"warn": "【自然预警】上游持续降雨，水文站预计湖区水位将快速上涨。",
 		"hit": "【危机爆发】汛期洪水漫过草洲——新生沉水植被被冲毁，底质遭到破坏。",
 		"effects": [{"metric": "water_level", "delta": 18}, {"metric": "vegetation", "delta": -10}],
@@ -1385,6 +1794,7 @@ func _guard_starting_metrics() -> void:
 	if difficulty == Difficulty.NIGHTMARE:
 		return
 	for m in metrics.keys():
+		if m == "water_level": continue
 		var safe: int = failure_threshold_for(str(m)) + 2
 		if int(metrics[m]) < safe:
 			metrics[m] = safe
@@ -1407,7 +1817,7 @@ func _species_target(sid: String) -> int:
 	var drivers: Array = SPECIES[sid]["drivers"]
 	var sum := 0
 	for d in drivers:
-		sum += metrics[d]
+		sum += _water_habitat_score() if d == "water_level" else int(metrics[d])
 	return int(sum / drivers.size())
 
 
@@ -1416,8 +1826,11 @@ func _plant_target(pid: String) -> int:
 	var drivers: Array = PLANTS[pid]["drivers"]
 	var sum := 0
 	for d in drivers:
-		sum += metrics[d]
+		sum += _water_habitat_score() if d == "water_level" else int(metrics[d])
 	return int(sum / drivers.size())
+
+func _water_habitat_score() -> int:
+	return clampi(100 - int(water_pressure(int(metrics.get("water_level", 50)))["deviation"]) * 3, 0, 100)
 
 
 ## 本回合由六项指标换来的额外拨款（万）。FUNDING_STEPS 的求值器。
@@ -1662,6 +2075,7 @@ func _mark_warning_hit(id: String, hit_turn: int) -> void:
 
 ## 从 cond 字符串里取出 {metric, op, threshold}（预警历史要记下当时的数值）
 func _parse_cond_simple(cond: String) -> Dictionary:
+	cond = _seasonal_water_condition(cond)
 	var m := RegEx.new()
 	m.compile("(\\w+)\\s*(<=|>=|<|>|==)\\s*(-?\\d+)")
 	var res := m.search(cond)
@@ -1676,6 +2090,7 @@ func _parse_cond_simple(cond: String) -> Dictionary:
 ## 单独看社区低就报警会冤枉玩家（鱼还多的时候，候鸟不会大规模进田）。
 ## 注意：单条件的老写法（如 "turn == 1"、"vegetation < 45"）走的是同一条路，行为与改动前一致。
 func _eval_condition_simple(cond: String) -> bool:
+	cond = _seasonal_water_condition(cond)
 	var m := RegEx.new()
 	m.compile("(\\w+)\\s*(<=|>=|<|>|==)\\s*(-?\\d+)")
 	var all := m.search_all(cond)
@@ -1698,6 +2113,11 @@ func _eval_condition_simple(cond: String) -> bool:
 			return false
 	return true
 	return false
+
+
+func _seasonal_water_condition(cond: String) -> String:
+	var rule := water_reference()
+	return cond.replace("seasonal_low", str(rule["low"])).replace("seasonal_high", str(rule["high"]))
 
 
 ## 某张卡某档位的成本（万，取整）
@@ -1736,7 +2156,8 @@ func draw_cards(n: int, guarantee_season: bool = false) -> Array:
 
 ## 当前季节（spring / summer / autumn / winter）
 func current_season() -> String:
-	return SEASONS[(turn - 1) % 4]
+	# Before the first turn, the title landscape previews spring.
+	return SEASONS[(maxi(1, turn) - 1) % SEASONS.size()]
 
 
 ## 本回合是不是「本季的第 1 回合」（一局只有 4 次：第 1 / 5 / 9 / 13 回合）
@@ -1877,8 +2298,11 @@ func _card_weight(card: Dictionary, wanted: Dictionary, rescue: Dictionary) -> f
 func _rescue_metric_set() -> Dictionary:
 	var out: Dictionary = {}
 	for m in metrics:
+		if m == "water_level": continue
 		if int(metrics[m]) < failure_threshold_for(m) + RESCUE_MARGIN:
 			out[m] = true
+	var pressure := water_pressure(int(metrics.get("water_level", 50)))
+	if pressure["side"] != "safe": out["water_level"] = pressure["side"]
 	return out
 
 
@@ -1886,6 +2310,10 @@ func _rescue_metric_set() -> Dictionary:
 func _card_helps_any(card: Dictionary, needed: Dictionary) -> bool:
 	for tier in card.get("tiers", {}).values():
 		for e in tier.get("effects", []):
+			if e["metric"] == "water_level" and needed.has("water_level"):
+				if (needed["water_level"] == "high" and int(e["delta"]) < 0) or (needed["water_level"] == "low" and int(e["delta"]) > 0):
+					return true
+				continue
 			if int(e["delta"]) > 0 and needed.has(str(e["metric"])):
 				return true
 	return false
@@ -1979,7 +2407,7 @@ func execute_action(card_id: String, tier: String, free: bool = false) -> bool:
 			# 所以小票的四类来源求和完全不受影响。
 			if metrics.has(e["metric"]):
 				var preview: int = int(e["delta"])
-				if preview < 0:
+				if preview < 0 and e["metric"] != "water_level":
 					preview = _scaled_delta(preview)   # 与到期时 _apply_delta 的口径保持一致
 				score_ledger.append({
 					"phase": "card_delayed", "label": str(card["name"]),
@@ -2025,13 +2453,11 @@ func execute_action(card_id: String, tier: String, free: bool = false) -> bool:
 ##   所以提示里写的数字和实际结算的数字同源，不会各写一套。
 func natural_evolution() -> void:
 	for e in natural_evolution_plan():
-		# ⚠ 自己算好最终值、传 apply_penalty=false，**不要**再让 _apply_delta 乘一次倍率：
-		#   困难档的随机下限是在倍率**之后**抬的（见 natural_evolution_plan），
-		#   交给 _apply_delta 缩放会把那个 +1 抹掉（而且会双重放大）。
-		#   min/max 夹取对其它条目是恒等操作 —— 它们的 delta 本来就落在自己的区间里 ——
-		#   所以简单/普通档与改动前逐字一致。
-		var d: int = clampi(_scaled_delta(int(e["delta"])), int(e["min"]), int(e["max"]))
+		# 统一换算实际变动；水位与洪旱已给最终值，其余负向演化只缩放一次。
+		var d: int = _evolution_delta(e)
 		_apply_delta(str(e["metric"]), d, false, "routine", str(e["why"]))
+		if e.get("hydrology", false) and d != 0:
+			_add_log("%s：%s %+d" % [e["why"], METRIC_NAMES[e["metric"]], d])
 	_sync_species()
 	_sync_plants()
 	metrics_changed.emit()
@@ -2043,46 +2469,45 @@ func natural_evolution() -> void:
 ##   min/max = 叠加难度负向倍率后，玩家真正会看到的区间
 ##   kind    = random / loss / gain / none
 ## roll_random=false 时不去动水位那次随机（HUD 每帧查它，绝不能扰动全局随机序列）
-func natural_evolution_plan(roll_random: bool = true) -> Array:
+func natural_evolution_plan(roll_random: bool = true, water_delta_override: int = 999) -> Array:
 	var sim: Dictionary = metrics.duplicate()   # 推演副本：后一步的条件要看前几步之后的值（与原执行顺序一致）
 	var out: Array = []
 
 	# 1) 水位按**季节节律**变化 —— 贴鄱阳湖的水文现实：春涨水、夏高水、秋落水、冬枯水。
-	#    区间写的是**原始值**，负向部分照旧吃难度倍率（与其它条目同一口径）；
-	#    min 是「吃完倍率后玩家真正会看到的最坏值」，困难档再抬 HARD_ROUTINE_FLOOR_BONUS 点减少暴毙。
+	#    水位涨落独立于难度；难度放大的是下面的生态压力。
 	#    ⚠ 区间内的随机是保留的：节律决定「往哪个方向走」，具体走几步仍不确定，
 	#      否则每局的水位曲线会一模一样，肉鸽性就没了。
 	var season := current_season()
-	var wl_raw_lo: int = 1
-	var wl_raw_hi: int = 3
+	var rule := water_reference(season)
+	var drift := water_drift_range(season)
+	var wl_raw_lo: int = int(drift[0])
+	var wl_raw_hi: int = int(drift[1])
 	var wl_why: String = "春季涨水（五河来水，水位小幅回升）"
 	match season:
 		"summer":
-			wl_raw_lo = 2
-			wl_raw_hi = 5
 			wl_why = "夏季高水（长江汛期，水位大幅上涨、易漫滩）"
 		"autumn":
-			wl_raw_lo = -4
-			wl_raw_hi = -2
 			wl_why = "秋季落水（水位回落，洲滩渐次露出）"
 		"winter":
-			wl_raw_lo = -5
-			wl_raw_hi = -3
 			wl_why = "冬季枯水（全年最低，碟形湖脱离主湖）"
-	var wl_lo: int = _scaled_delta(wl_raw_lo)
-	var wl_hi: int = _scaled_delta(wl_raw_hi)
-	# ⚠ 只有在「枯水季」（下限为负）才抬下限：这条本来是为了减少困难档的暴毙，
-	#   而春季/夏季是正区间，若不设守卫会把春季的最低下限从 +1 抬到 +2，白白窄化区间。
-	if difficulty == Difficulty.HARD and wl_lo < 0:
-		wl_lo += HARD_ROUTINE_FLOOR_BONUS
-	var wl: int = _randi_range(wl_raw_lo, wl_raw_hi) if roll_random else 0
+	var wl: int = _randi_range(wl_raw_lo, wl_raw_hi) if roll_random else roundi((wl_raw_lo + wl_raw_hi) / 2.0)
+	if water_delta_override != 999: wl = clampi(water_delta_override, wl_raw_lo, wl_raw_hi)
 	out.append({"metric": "water_level", "delta": wl,
-		"min": wl_lo, "max": wl_hi, "kind": "random",
+		"applied_delta": wl, "min": wl_raw_lo, "max": wl_raw_hi, "kind": "random",
 		"why": wl_why})
-	# 推演用的也按同一个下限夹一次，否则「小窗显示的范围」与「后几步的条件判断」
-	# 会以没抬过下限的值来推，跟实际结算对不上。
-	var wl_applied: int = clampi(_scaled_delta(wl), wl_lo, wl_hi)
-	sim["water_level"] = clampi(int(sim.get("water_level", 0)) + wl_applied, 0, 100)
+	var water_before: int = int(sim.get("water_level", 0))
+	sim["water_level"] = clampi(water_before + wl, 0, 100)
+
+	# 水位本身不致死；按整季暴露结算一次，再让水质→植被→候鸟继续联动。
+	var pressure := water_turn_pressure(water_before, int(sim["water_level"]))
+	for metric in pressure["effects"]:
+		var loss: int = int(pressure["effects"][metric])
+		var why := "%s季%s：行动后水位 %d → 自然变化后 %d，参考 %d–%d，季内暴露 ×%.2f" % [
+			SEASON_NAMES[season], "干旱压力" if pressure["side"] == "low" else "淹水压力",
+			water_before, sim["water_level"], pressure["low"], pressure["high"], pressure["multiplier"]]
+		out.append({"metric": metric, "delta": loss, "applied_delta": loss,
+			"min": loss, "max": loss, "kind": "loss", "why": why, "hydrology": true})
+		sim[metric] = clampi(int(sim.get(metric, 0)) + loss, 0, 100)
 
 	# 2) 水质：无治理则缓慢恶化
 	if used_action_ids.has("water_monitor") or used_action_ids.has("research") or used_action_ids.has("smart_patrol"):
@@ -2149,24 +2574,41 @@ func _scaled_delta(delta: int) -> int:
 		return roundi(delta * PENALTY_MULT[difficulty])
 	return delta
 
+func _evolution_delta(e: Dictionary) -> int:
+	if e.has("applied_delta"): return int(e["applied_delta"])
+	return clampi(_scaled_delta(int(e["delta"])), int(e["min"]), int(e["max"]))
+
+## 枚举全部水文随机值，逐条夹取，保留水质/植被门槛联动，悬停推演不消耗随机数。
+func natural_evolution_outcomes() -> Array:
+	var drift: Array = water_drift_range()
+	var outcomes: Array = []
+	for wl in range(int(drift[0]), int(drift[1]) + 1):
+		var snapshot: Dictionary = metrics.duplicate()
+		var pressure_losses: Dictionary = {}
+		for e in natural_evolution_plan(false, wl):
+			var metric: String = str(e["metric"])
+			var d := _evolution_delta(e)
+			snapshot[metric] = clampi(int(snapshot.get(metric, 0)) + d, 0, 100)
+			if e.get("hydrology", false): pressure_losses[metric] = d
+		outcomes.append({"metrics": snapshot, "pressure_losses": pressure_losses})
+	return outcomes
+
 
 ## ── HUD 悬停提示用：某一项指标「本回合会掉多少 / 红线在哪」──
 ## 只读，不改状态。数据来源：natural_evolution_plan()（回合末自然演化）+ pending_crisis（下回合结算时爆发的危机）
-## ⚠ why 字段只留给代码与文档：指标之间的因果链是**隐性参数**，不上屏，
-##   玩家应该自己从数字里总结。界面层只取数字，别把它渲染出来。
+## 枚举水位随机值，汇总同一指标的全部变动，包含越界压力及后续生态联动。
 func metric_hover_preview(metric: String) -> Dictionary:
 	var cur: int = int(metrics.get(metric, 0))
 	var line: int = failure_threshold_for(metric)
 
-	var info: Dictionary = {}
-	for e in natural_evolution_plan(false):
-		if str(e["metric"]) == metric:
-			info = e
-			break
-	var nat_min: int = int(info.get("min", 0))
-	var nat_max: int = int(info.get("max", 0))
-	var end_min: int = clampi(cur + nat_min, 0, 100)
-	var end_max: int = clampi(cur + nat_max, 0, 100)
+	var end_min := 100
+	var end_max := 0
+	for outcome in natural_evolution_outcomes():
+		var value: int = int(outcome["metrics"].get(metric, cur))
+		end_min = mini(end_min, value)
+		end_max = maxi(end_max, value)
+	var nat_min: int = end_min - cur
+	var nat_max: int = end_max - cur
 
 	# 已预警、下回合结算时才爆发的危机：只看它有没有打到这一项（危机伤害不吃难度负向倍率）
 	var crisis_name := ""
@@ -2181,13 +2623,13 @@ func metric_hover_preview(metric: String) -> Dictionary:
 	var worst: int = clampi(end_min + crisis_delta, 0, 100)
 	return {
 		"metric": metric, "cur": cur, "line": line,
-		"kind": str(info.get("kind", "none")), "why": str(info.get("why", "")),
+		"kind": "random" if end_min != end_max else ("loss" if nat_min < 0 else ("gain" if nat_min > 0 else "none")),
 		"nat_min": nat_min, "nat_max": nat_max,
 		"end_min": end_min, "end_max": end_max,
 		"crisis_name": crisis_name, "crisis_delta": crisis_delta, "worst": worst,
 		"margin_nat": end_min - line,      # 只算自然演化时的余量（取最坏的一头）
-		"break_nat": end_min < line,       # 光自然演化就会跌破生态红线
-		"break_total": worst < line,       # 把下回合那场危机一起算上
+		"break_nat": metric != "water_level" and end_min < line,
+		"break_total": metric != "water_level" and worst < line,
 		"penalty_mult": PENALTY_MULT[difficulty],
 	}
 
@@ -2307,6 +2749,8 @@ func failure_threshold() -> int:
 ## 某一项指标的判负阈值 = 难度线 + 该项偏移 + 该难度下的额外调整
 ## （两张表里都没写就是难度线本身）
 func failure_threshold_for(metric: String) -> int:
+	# -1 表示没有致死线；所有难度（包括噩梦）都按季节生态影响处理水位。
+	if metric == "water_level": return -1
 	# ⚠ 噩梦档**不叠任何偏移**：995f784 那版就是六项共用一条线，
 	#   "每指标单独红线"是后来才加的。照搬偏移会把噩梦档悄悄变简单
 	#   （社区 +10 会把它的线从 45 抬到 55，等于开局凭空多出 7 点余量）。
@@ -2322,6 +2766,7 @@ func _check_failure() -> bool:
 	if game_over:
 		return is_failure   # 已经判负，不重复判、不重复发信号
 	for metric in metrics:
+		if metric == "water_level": continue
 		var threshold: int = failure_threshold_for(metric)
 		if metrics[metric] < threshold:
 			is_failure = true
@@ -2344,6 +2789,7 @@ func check_failure_now() -> bool:
 func metrics_below_threshold() -> Array:
 	var out: Array = []
 	for metric in metrics:
+		if metric == "water_level": continue
 		var threshold: int = failure_threshold_for(metric)
 		if metrics[metric] < threshold:
 			out.append({"metric": metric, "value": metrics[metric]})
@@ -2367,6 +2813,9 @@ const KNOWLEDGE_TAG_BOOST := 3.0
 ## 0.0 = 关掉随机赠送（只剩条件触发）。
 const KNOWLEDGE_RANDOM_CHANCE := 0.25
 
+## 独立随机彩蛋：每个允许掉卡的回合 3%，不受季节、行动、标签或收藏补齐影响。
+const DIXINHU_RANDOM_CHANCE := 0.03
+
 
 ## 回合末的知识卡检查 —— **每回合最多挑一张**，压入待弹出队列。
 ##
@@ -2381,9 +2830,12 @@ func _check_knowledge_triggers() -> void:
 
 	var candidates: Array = []
 	for card_id in KNOWLEDGE_CARDS:
+		if KNOWLEDGE_CARDS[card_id].get("random_only", false):
+			continue
 		if not (card_id in knowledge_unlocked):
 			candidates.append(card_id)
-	if candidates.is_empty():
+	var egg_available := not ("egg_dixinhu" in knowledge_unlocked)
+	if candidates.is_empty() and not egg_available:
 		return
 
 	# 本回合打过的行动卡带的标签 —— 决定「哪张更容易被抽中」
@@ -2391,11 +2843,13 @@ func _check_knowledge_triggers() -> void:
 
 	var hit: Array = []
 	for card_id in candidates:
-		if _eval_condition(KNOWLEDGE_CARDS[card_id]["condition"]):
+		if _knowledge_condition_met(KNOWLEDGE_CARDS[card_id]):
 			hit.append(card_id)
 
 	var pick := ""
-	if not hit.is_empty():
+	if egg_available and _knowledge_rng.randf() < DIXINHU_RANDOM_CHANCE:
+		pick = "egg_dixinhu"
+	elif not hit.is_empty():
 		# 条件命中优先，但一次只出一张：同时踩线时，与本回合出牌同标签的那张更容易被挑中
 		pick = _pick_knowledge(hit, turn_tags)
 	elif KNOWLEDGE_RANDOM_CHANCE > 0.0 and _knowledge_rng.randf() < KNOWLEDGE_RANDOM_CHANCE:
@@ -2406,6 +2860,22 @@ func _check_knowledge_triggers() -> void:
 	knowledge_unlocked.append(pick)
 	pending_knowledge.append(pick)
 	knowledge_last_turn = turn
+
+
+func _knowledge_condition_met(card: Dictionary) -> bool:
+	if card.get("random_only", false):
+		return false
+	var condition := str(card.get("condition", ""))
+	if not condition.is_empty() and _eval_condition(condition):
+		return true
+	for action_id in card.get("action_ids", []):
+		if action_id in used_action_ids:
+			return true
+	if turn > 0:
+		var season_name: String = ["春", "夏", "秋", "冬"][(turn - 1) % 4]
+		if season_name in card.get("seasons", []):
+			return true
+	return false
 
 
 ## 本回合打过的行动卡带的所有标签（去重）
@@ -2425,6 +2895,13 @@ func _knowledge_turn_tags() -> Dictionary:
 func _pick_knowledge(candidates: Array, turn_tags: Dictionary) -> String:
 	if candidates.is_empty():
 		return ""
+	# 跨局优先补齐收藏；全部收集后仍可重温，但同局不重复。
+	var missing: Array = []
+	for card_id in candidates:
+		if not Knowledge.is_collected(str(card_id)):
+			missing.append(card_id)
+	if not missing.is_empty():
+		candidates = missing
 	var weights: Array = []
 	var total := 0.0
 	for card_id in candidates:
@@ -2485,7 +2962,7 @@ func _apply_delta(metric: String, delta: int, apply_penalty: bool = true,
 	# ⚠ 危机伤害**不吃**这个倍率：危机数值（-14 之类）本身就是设计好的惩罚，
 	#   再乘 1.5 / 2.0 会让困难档"任何一次危机都是一击必杀"——对策卡给的是正向数值
 	#   （正向不乘倍率），+8 永远追不上 -28，"预警 → 对策卡 → 应对"的核心循环就废了。
-	if delta < 0 and apply_penalty:
+	if delta < 0 and apply_penalty and metric != "water_level":
 		delta = _scaled_delta(delta)
 	var before: int = metrics[metric]
 	var after: int = clampi(before + delta, 0, 100)

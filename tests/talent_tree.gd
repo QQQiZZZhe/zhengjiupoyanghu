@@ -70,6 +70,43 @@ func test_allocations() -> void:
 	buy(["hydro", "civic", "hydro_water", "civic_carry", "early_warning"])
 	check(Talents.tree_rank("early_warning") == 1, "Both ALL parents did not unlock crossing")
 
+func test_terminal_effects() -> void:
+	var finals := ["lake_resilience", "habitat_expert", "steady_management"]
+	var starting_deltas := {
+		"lake_resilience": {"water_level": 5, "water_quality": 5},
+		"habitat_expert": {"vegetation": 5, "birds": 5},
+		"steady_management": {},
+	}
+	for final_id in finals:
+		fresh()
+		buy(["hydro", "eco", "hydro_quality", "eco_veg", "habitat_link", "careful_buy"])
+		GameState.difficulty = GameState.Difficulty.EASY
+		GameState.run_seed = 20261004
+		GameState.reset_game()
+		var starting_baseline: Dictionary = GameState.metrics.duplicate()
+		buy([final_id])
+		GameState.reset_game()
+		for metric in starting_baseline:
+			check(int(GameState.metrics[metric]) - int(starting_baseline[metric]) == int(starting_deltas[final_id].get(metric, 0)), "Terminal starting bonus wrong: %s / %s" % [final_id, metric])
+		for other_id in finals:
+			if other_id != final_id:
+				check(not Talents.unlock(other_id), "Terminal choice must remain exclusive: " + final_id)
+		Talents.granted = []
+		Talents.set_run_tree({})
+		GameState.carry = 0
+		GameState.start_new_turn()
+		var baseline: int = GameState.funds
+		Talents.set_run_tree(Talents.tree_ranks)
+		for round_index in 2:
+			GameState.carry = 0
+			GameState.start_new_turn()
+			check(GameState.funds == baseline + (5 if final_id == "steady_management" else 0), "Terminal recurring funding wrong: " + final_id)
+		check(Talents.get_bonus("carry") == (10 if final_id == "steady_management" else 0), "Terminal carry bonus wrong: " + final_id)
+		if final_id == "steady_management":
+			GameState.funds = 1000
+			GameState.end_turn()
+			check(GameState.carry == GameState.MAX_CARRY + 10, "Terminal carry cap must apply during turn settlement")
+
 func test_rewards() -> void:
 	fresh(0)
 	for mode in 3:
@@ -94,7 +131,7 @@ func test_rewards() -> void:
 	check(Talents.nightmare_mastery and Talents.tree_ranks.size() == 18, "Restart lost nightmare mastery")
 	Talents.roll_for_run(7, 3)
 	Talents.granted = []
-	var expected := {"start_water": 4, "start_quality": 3, "start_veg": 4, "start_fish": 3, "start_birds": 4, "start_community": 3, "carry": 6, "funding": 3, "operation": -2, "card_cost": -0.02, "crisis_chance": -0.02, "cards": 0, "first_turn_actions": 0, "interest": 0, "start_all": 0}
+	var expected := {"start_water": 8, "start_quality": 7, "start_veg": 8, "start_fish": 3, "start_birds": 8, "start_community": 3, "carry": 14, "funding": 7, "operation": -2, "card_cost": -0.02, "crisis_chance": -0.02, "cards": 0, "first_turn_actions": 0, "interest": 0, "start_all": 0}
 	for key in expected: check(is_equal_approx(Talents.get_bonus(key), float(expected[key])), "Permanent maximum too large/wrong: " + key)
 	check(Talents.run_tree_effect_summary().split("\n").size() <= 3, "Mastery summary must fit starting popup")
 
@@ -224,6 +261,7 @@ func test_ui() -> void:
 func _ready() -> void:
 	AudioServer.set_bus_mute(0, true)
 	test_allocations()
+	test_terminal_effects()
 	test_rewards()
 	test_run_snapshot()
 	await test_ui()

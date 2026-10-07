@@ -1,10 +1,21 @@
 extends Control
+const VisualTheme := preload("res://scripts/visual_theme.gd")
 ## Orthographic 45-degree wetland view, with upright scenery and wildlife.
 ## All decorative placement is deterministic; never consume gameplay RNG.
 const LANDSCAPE := preload("res://assets/art/poyang-terrain-base.png")
 const SHORE_DISTANCE := preload("res://assets/art/lake-shore-distance.png")
 const GROUND_SHADER := preload("res://scripts/wetland_ground.gdshader")
-const LAND_COLOR := Color("829666")
+const CONTACT_SHADOW_SHADER := preload("res://scripts/wetland_contact_shadow.gdshader")
+const YANGTZE_HALF_WIDTH := 0.030
+const RIVER_BOAT_SPEED := 0.00035
+const RIVER_BOAT_LANE := 0.010
+const FISHING_BOAT_EXTENT := Vector2(60, 62)
+# Bow-to-stern axis in the existing diagonal artwork at its rendered aspect.
+const FISHING_BOAT_FORWARD := Vector2(-0.78, 0.62)
+const GAN_HALF_WIDTH := 0.010
+const LAND_COLOR := VisualTheme.MEADOW
+const SEASON_CHANGE_DURATION := 1.15
+const MAX_WEATHER_PARTICLES := 180
 ## 相机方位角转正后，地面在屏幕上的投影宽度从 GROUND_SIZE*(sin45+cos45)=1.414 倍
 ## 变成 GROUND_SIZE*1.0 倍；把 MAP_ZOOM 按同样比例缩回来，视野才跟转正前一致。
 const MAP_ZOOM := 1.12
@@ -36,14 +47,7 @@ const SHADOWS := {
 	"tree": true,        # 树 / 沿岸植被
 	"island": false,     # 浮岛
 }
-## 月牙"逐栋调"的地方：每张贴图一个椭圆半径（76px 方框里的像素单位）。
-## 四张房子外形差得远（高矮、宽窄、脚点都不同），共用一条公式必然要么矮房露多了像浮空、
-## 要么高楼露少了看着别扭。数值：前伸深度 / 房子视觉高 ≈ 19% / 20% / 23% / 24%。
-## 逐栋调：椭圆半径 + 影子中心相对房子视觉脚点的下推量（都是 76px 方框里的像素单位）。
-## 高楼（house1/2，视觉高 66/64）—— 房子本身高、底边窄，影子要**多藏进房子下面**：
-##   半径收一点、下推量给 0（中心正好压在脚点上，只露前半）。
-## 矮房（house3/4，视觉高 41/42）—— 房子矮，影子露出来才好看：
-##   半径放大一圈、再往前推 6px，露出的前半更完整。
+## Per-art radius caps, further limited by the opaque sprite footprint.
 const HOUSE_SHADOW_RADIUS := [30.0, 31.0, 34.0, 36.0]
 const HOUSE_SHADOW_FOOT := [0.0, 0.0, 6.0, 6.0]
 ## 空地（只有一株芦苇标记）的接触阴影：草本植物，给小一号的。
@@ -113,16 +117,40 @@ var plants: Dictionary = {}
 var islands := 0
 var settlement := 50.0
 var season := 0
+var previous_season := 0
+var season_progress := 1.0
+var tree_season_age := 4.0
 var elapsed := 0.0
-var clock_accum := 0.0
 var backdrop: TextureRect
 var terrain_viewport: SubViewport
 var map_camera: Camera3D
 var creeper_mesh: MeshInstance3D
+var _reserved_camera_zoom := 1.3
 var camera_zoom_factor := GAME_CAMERA_ZOOM
 var camera_tween: Tween
+var hand_view_tween: Tween
+var hand_view_state := Vector2(0.0, 1.0)
+var _screen_projection := Transform2D.IDENTITY
+var _shadow_projection := Transform2D.IDENTITY
+var _overlay_inverse := Transform2D.IDENTITY
+var _shadow_unit_rings: Dictionary = {}
+var _static_items: Array[Dictionary] = []
+var _static_key: Array = []
+var _shadow_key: Array = []
+var _relief_values := PackedFloat32Array()
+var _relief_cache: Dictionary = {}
+var _route_lengths: Dictionary = {}
+var _render_items: Array[Dictionary] = []
+var _render_shadow_specs: Array[Dictionary] = []
+var _river_distance_cache: Dictionary = {}
 var water_material: ShaderMaterial
 var ground_material: ShaderMaterial
+var ground_plane: PlaneMesh
+var relief_image: Image
+var relief_texture: ImageTexture
+var river_surface_texture: ImageTexture
+var river_water_materials: Array[ShaderMaterial] = []
+var clearing_material: ShaderMaterial
 var river_bank_material: ShaderMaterial
 var reduced_motion := false
 var terrain_image: Image
@@ -147,7 +175,14 @@ var yangtze_route: Array[Vector2] = []
 var gan_route: Array[Vector2] = []
 var scenery_props: Array[Dictionary] = []
 var prop_textures: Array[ImageTexture] = []
-## 每栋房子贴图的不透明外形（_ready 里量一次）：月牙要按"这栋房子实际多宽、多高、脚在哪"给。
+var exterior_image: Image
+var exterior_texture: ImageTexture
+var seasonal_trees: Array[Texture2D] = []
+var tree_frames: Array = []
+var pine_seasons: Array[Texture2D] = []
+var summer_flowers: Array[Vector2] = []
+var snow_sites: Array[Vector2] = []
+## Opaque sprite footprints keep contact shadows under the actual feet.
 var house_art_shape: Array[Dictionary] = []
 
 func _ready() -> void:
@@ -170,7 +205,9 @@ func _ready() -> void:
 	_build_river_routes()
 	_make_house_sites()
 	_measure_house_art()
+	_build_exterior_seasons()
 	_build_meadow_scenery()
+	_build_land_relief()
 	easter_rng.randomize()
 	var land_margin := ColorRect.new()
 	land_margin.name = "LandMargin"
@@ -203,22 +240,41 @@ void fragment() {
 }"""
 	water_material = ShaderMaterial.new()
 	water_material.shader = shader
-	# Share the same ecology and season tint across map land and empty margins.
-	land_margin.material = water_material
+	# The terrain viewport fills the view with seasonal ground, including margins.
 	backdrop.material = water_material
 	_build_terrain_viewport()
 	backdrop.texture = terrain_viewport.get_texture()
 	add_child(backdrop)
 	_layout_map()
+	# Contact shadows are ground decals, always below all upright scenery.
+	var shadows := Control.new()
+	shadows.name = "GroundShadows"
+	shadows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadows.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var shadow_material := ShaderMaterial.new()
+	shadow_material.shader = CONTACT_SHADOW_SHADER
+	shadow_material.set_shader_parameter("ground_texture", terrain_viewport.get_texture())
+	shadows.material = shadow_material
+	shadows.draw.connect(_draw_contact_shadows.bind(shadows))
+	add_child(shadows)
 	# Wildlife stays separate from the terrain-only texture.
 	var wildlife := Control.new()
 	wildlife.name = "Wildlife"
+	var scenery_material := ShaderMaterial.new()
+	scenery_material.shader = preload("res://scripts/wetland_scenery.gdshader")
+	wildlife.material = scenery_material
 	wildlife.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	wildlife.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	wildlife.draw.connect(_draw_wildlife.bind(wildlife))
 	add_child(wildlife)
+	var weather := Control.new()
+	weather.name = "SeasonWeather"
+	weather.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	weather.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	weather.draw.connect(_draw_season_weather.bind(weather))
+	add_child(weather)
+	_layout_map()
 	resized.connect(_layout_map)
-	resized.connect(func(): wildlife.queue_redraw())
 	sync_state()
 
 func _build_terrain_viewport() -> void:
@@ -236,15 +292,17 @@ func _build_terrain_viewport() -> void:
 	world.add_child(environment)
 	var ground := MeshInstance3D.new()
 	ground.name = "WetlandGround"
-	var plane := PlaneMesh.new()
-	plane.size = Vector2.ONE * GROUND_SIZE
-	ground.mesh = plane
+	ground_plane = PlaneMesh.new()
+	ground_plane.size = Vector2.ONE * GROUND_SIZE
+	ground_plane.subdivide_width = 127
+	ground_plane.subdivide_depth = 127
+	ground.mesh = ground_plane
 	ground_material = _make_ground_material(false)
 	ground.material_override = ground_material
 	world.add_child(ground)
 	river_bank_material = _make_river_bank_material()
-	_build_river_mesh(world, yangtze_route, 0.017)
-	_build_river_mesh(world, gan_route, 0.010)
+	_build_river_mesh(world, yangtze_route, YANGTZE_HALF_WIDTH)
+	_build_river_mesh(world, gan_route, GAN_HALF_WIDTH)
 	map_camera = Camera3D.new()
 	map_camera.name = "WetlandCamera"
 	map_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
@@ -260,9 +318,9 @@ func _build_terrain_viewport() -> void:
 	clearing_plane.size = Vector2(30, 30)
 	clearing.mesh = clearing_plane
 	clearing.position = _ground_position(CREEPER_ANCHOR)
-	var clearing_material := StandardMaterial3D.new()
-	clearing_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	clearing_material.albedo_color = LAND_COLOR
+	clearing_material = _make_ground_material(false)
+	clearing_material.set_shader_parameter("meadow_only", true)
+	clearing_material.set_shader_parameter("terrain_relief", false)
 	clearing.material_override = clearing_material
 	clearing.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	world.add_child(clearing)
@@ -292,28 +350,75 @@ void fragment() {
 
 func _layout_map() -> void:
 	var viewport_size := Vector2i(maxi(1, roundi(size.x)), maxi(1, roundi(size.y)))
-	terrain_viewport.size = viewport_size
+	if terrain_viewport.size != viewport_size:
+		terrain_viewport.size = viewport_size
 	var aspect := float(viewport_size.x) / float(viewport_size.y)
 	var ground_width := GROUND_SIZE * (sin(VIEW_AZIMUTH) + cos(VIEW_AZIMUTH))
 	var ground_height := ground_width * sin(VIEW_PITCH)
-	map_camera.size = maxf(ground_height, ground_width / aspect) / MAP_ZOOM * camera_zoom_factor
+	var view_zoom := camera_zoom_factor * hand_view_state.y
+	map_camera.size = maxf(ground_height, ground_width / aspect) / MAP_ZOOM * view_zoom
+	map_camera.v_offset = -hand_view_state.x * map_camera.size
 	backdrop.position = Vector2.ZERO
 	backdrop.size = Vector2(viewport_size)
+	for layer_name in ["Wildlife", "GroundShadows"]:
+		var layer := get_node_or_null(layer_name) as Control
+		if layer:
+			layer.scale = Vector2.ONE / view_zoom
+			layer.position = size * 0.5 * (1.0 - 1.0 / view_zoom)
+	# Orthographic ground projection is affine. Compute it once per camera or
+	# window change instead of asking Camera3D for every sprite/shadow vertex.
+	var origin := map_camera.unproject_position(_ground_position(Vector2.ZERO))
+	_screen_projection = Transform2D(
+		map_camera.unproject_position(_ground_position(Vector2.RIGHT)) - origin,
+		map_camera.unproject_position(_ground_position(Vector2.DOWN)) - origin, origin)
+	# Cover every camera corner during menu zoom, hand focus and window resizing.
+	# Artwork UVs retain their original scale as the surrounding meadow expands.
+	var screen_to_map := _screen_projection.affine_inverse()
+	var half_extent := Vector2.ONE * GROUND_SIZE * 0.5
+	for corner in [Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)]:
+		var reserve_scale := maxf(view_zoom, _reserved_camera_zoom) / view_zoom
+		var uv: Vector2 = screen_to_map * (size * 0.5 + (corner - size * 0.5) * reserve_scale)
+		half_extent = half_extent.max((uv - Vector2.ONE * 0.5).abs() * GROUND_SIZE)
+	# Extra margin also covers the screen displacement of raised outer hills.
+	var required_size := (half_extent + Vector2.ONE * 4.0) * 2.0
+	# PlaneMesh setters rebuild the subdivided mesh. Reserve the farthest camera
+	# endpoint once and grow only for a genuinely larger window/focus footprint.
+	var reserved_size := ground_plane.size.max(required_size)
+	if not reserved_size.is_equal_approx(ground_plane.size): ground_plane.size = reserved_size
 	var wildlife := get_node_or_null("Wildlife") as Control
 	if wildlife:
-		wildlife.scale = Vector2.ONE / camera_zoom_factor
-		wildlife.position = size * 0.5 * (1.0 - 1.0 / camera_zoom_factor)
-		wildlife.queue_redraw()
+		_overlay_inverse = wildlife.get_transform().affine_inverse()
+		_shadow_projection = _overlay_inverse * _screen_projection
+	_redraw_scenery()
 
 func set_menu_camera(far: bool, menu_zoom: float = 1.3) -> void:
 	if camera_tween and camera_tween.is_valid(): camera_tween.kill()
-	if far: _set_camera_zoom(GAME_CAMERA_ZOOM)
+	_reserved_camera_zoom = maxf(_reserved_camera_zoom, menu_zoom)
+	var target := menu_zoom if far else GAME_CAMERA_ZOOM
+	if reduced_motion:
+		_set_camera_zoom(target)
+		return
+	# Retarget from the current pose, including interrupted transitions.
 	camera_tween = create_tween()
-	camera_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	camera_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	camera_tween.tween_method(_set_camera_zoom, camera_zoom_factor, menu_zoom if far else GAME_CAMERA_ZOOM, 1.2 if far else 0.8)
 
 func _set_camera_zoom(value: float) -> void:
 	camera_zoom_factor = value
+	_layout_map()
+
+func set_hand_view(focus_fraction: float, zoom_multiplier: float, animate: bool = true) -> void:
+	var target := Vector2(focus_fraction, zoom_multiplier)
+	if hand_view_tween and hand_view_tween.is_valid(): hand_view_tween.kill()
+	if not animate or reduced_motion:
+		_set_hand_view_state(target)
+		return
+	hand_view_tween = create_tween()
+	hand_view_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	hand_view_tween.tween_method(_set_hand_view_state, hand_view_state, target, 0.28)
+
+func _set_hand_view_state(value: Vector2) -> void:
+	hand_view_state = value
 	_layout_map()
 
 func roll_creeper_visibility() -> void:
@@ -336,10 +441,19 @@ func sync_state(state: Dictionary = {}, animate: bool = true, duration: float = 
 	plants = state["plants"].duplicate()
 	islands = int(state["islands"])
 	settlement = float(state["settlement"])
-	season = int(state["season"])
+	var next_season := int(state["season"])
+	if new_seed or not animate or reduced_motion or displayed_metrics.is_empty():
+		previous_season = next_season
+		season_progress = 1.0
+		tree_season_age = 4.0
+	elif next_season != season:
+		previous_season = season
+		season_progress = 0.0
+		tree_season_age = 0.0
+	season = next_season
 	if new_seed:
 		_reset_scenery()
-	sync_settlement_targets()
+	sync_community_targets()
 	if new_seed or not animate or reduced_motion or displayed_metrics.is_empty():
 		displayed_metrics = metrics.duplicate()
 		displayed_populations = populations.duplicate()
@@ -347,27 +461,32 @@ func sync_state(state: Dictionary = {}, animate: bool = true, duration: float = 
 		displayed_islands = float(islands)
 		transition_age = duration
 		transition_duration = duration
+		for i in house_progress.size():
+			house_progress[i] = 1.0 if i < house_target_count else 0.0
 	elif changed:
 		transition_from = {"metrics": displayed_metrics.duplicate(), "populations": displayed_populations.duplicate(),
 			"plants": displayed_plants.duplicate(), "islands": displayed_islands}
 		transition_age = 0.0
 		transition_duration = maxf(0.05, duration)
 	_apply_terrain_state()
-	get_node("Wildlife").queue_redraw()
+	_redraw_scenery()
 
 func _lake_offset() -> float:
 	var level := float(displayed_metrics.get("water_level", 50))
 	return (level - 50.0) / 50.0 * (22.0 if level >= 50.0 else 18.0)
 
 func _apply_terrain_state() -> void:
-	for material in [ground_material, river_bank_material]:
-		if material: material.set_shader_parameter("lake_offset", _lake_offset())
+	for material in [ground_material, river_bank_material, clearing_material] + river_water_materials:
+		if material:
+			material.set_shader_parameter("lake_offset", _lake_offset())
+			material.set_shader_parameter("season", season)
+			material.set_shader_parameter("previous_season", previous_season)
+			material.set_shader_parameter("season_progress", season_progress)
 	if water_material:
 		water_material.set_shader_parameter("quality", float(displayed_metrics.get("water_quality", 65)) / 100.0)
 		water_material.set_shader_parameter("vegetation", float(displayed_metrics.get("vegetation", 50)) / 100.0)
 		water_material.set_shader_parameter("level", float(displayed_metrics.get("water_level", 50)) / 100.0)
-		var tints := [Color.WHITE, Color(1.03, 1.02, 0.96), Color(1.06, 0.94, 0.80), Color(0.87, 0.95, 1.05)]
-		water_material.set_shader_parameter("season_tint", tints[season])
+		water_material.set_shader_parameter("season_tint", Color.WHITE)
 
 func _advance_presentation(delta: float) -> void:
 	if transition_age >= transition_duration or transition_from.is_empty(): return
@@ -379,6 +498,30 @@ func _advance_presentation(delta: float) -> void:
 	displayed_islands = lerpf(float(transition_from["islands"]), float(islands), fraction)
 	_apply_terrain_state()
 
+func _advance_season(delta: float) -> void:
+	tree_season_age = 4.0 if reduced_motion else minf(4.0, tree_season_age + delta)
+	if season_progress >= 1.0: return
+	season_progress = 1.0 if reduced_motion else minf(1.0, season_progress + delta / SEASON_CHANGE_DURATION)
+	for material in [ground_material, river_bank_material, clearing_material]:
+		if material: material.set_shader_parameter("season_progress", season_progress)
+
+func _season_blend_for_y(screen_y: float) -> float:
+	if season_progress >= 1.0: return 1.0
+	var edge := lerpf(-0.10, 1.10, season_progress)
+	return 1.0 - smoothstep(edge - 0.08, edge + 0.08, screen_y)
+
+func _season_blend_at(uv: Vector2) -> float:
+	return _season_blend_for_y(_point(uv).y / maxf(1.0, size.y))
+
+func _flower_amount(uv: Vector2, season_index: int) -> float:
+	if season_index == 1: return 1.0
+	# Spring opens a sparse first flush; summer fills in the other patches.
+	if season_index == 0 and int(absf(uv.x * 1307 + uv.y * 791)) % 3 == 0: return 0.70
+	return 0.0
+
+func _flower_amount_at(uv: Vector2) -> float:
+	return lerpf(_flower_amount(uv, previous_season), _flower_amount(uv, season), _season_blend_at(uv))
+
 func play_action(card_id: String, state: Dictionary, duration: float) -> void:
 	sync_state(state, true, duration)
 	if not reduced_motion:
@@ -386,6 +529,7 @@ func play_action(card_id: String, state: Dictionary, duration: float) -> void:
 
 func _process(delta: float) -> void:
 	_advance_presentation(delta)
+	_advance_season(delta)
 	for i in range(action_effects.size() - 1, -1, -1):
 		action_effects[i]["age"] += delta
 		if action_effects[i]["age"] >= action_effects[i]["duration"]: action_effects.remove_at(i)
@@ -395,20 +539,78 @@ func _process(delta: float) -> void:
 	for i in house_progress.size():
 		var target := 1.0 if i < house_target_count else 0.0
 		house_progress[i] = target if reduced_motion else move_toward(house_progress[i], target, delta * (1.8 if target > house_progress[i] else 2.2))
-	clock_accum += delta
-	if clock_accum < 1.0 / 24.0: return
-	clock_accum = 0.0
+	_redraw_scenery()
+
+func _redraw_scenery() -> void:
+	if not has_node("Wildlife"): return
+	_render_items = _scenery_draw_order()
+	# Birds have no contact decals. Reuse shadow draw commands until the ground,
+	# camera, vegetation or building growth actually changes.
+	var shadow_key: Array = [_static_key, house_progress.duplicate(), _screen_projection, _overlay_inverse]
+	if shadow_key != _shadow_key:
+		_shadow_key = shadow_key.duplicate(true)
+		_render_shadow_specs = _contact_shadow_specs(_render_items)
+		get_node("GroundShadows").queue_redraw()
 	get_node("Wildlife").queue_redraw()
+	get_node("SeasonWeather").queue_redraw()
 
 func _point(uv: Vector2) -> Vector2:
 	# Camera projection keeps upright screen sprites attached to the 3D ground.
-	return map_camera.unproject_position(_ground_position(uv)).round()
+	return (_screen_projection * uv + _relief_screen_offset(uv)).round()
+
+func _relief_screen_offset(uv: Vector2) -> Vector2:
+	return Vector2(0, -_relief_at(uv) * _screen_projection.y.y / GROUND_SIZE / tan(VIEW_PITCH))
+
+func _relief_at(uv: Vector2) -> float:
+	if relief_image == null: return 0.0
+	if _relief_cache.has(uv): return _relief_cache[uv]
+	var width := relief_image.get_width()
+	var pixel := ((uv + Vector2.ONE * 0.5) * 0.5 * width - Vector2.ONE * 0.5).clamp(Vector2.ZERO, Vector2.ONE * (width - 1))
+	var a := Vector2i(pixel.floor())
+	var b := (a + Vector2i.ONE).min(Vector2i.ONE * (width - 1))
+	var value := lerpf(lerpf(_relief_values[a.y * width + a.x], _relief_values[a.y * width + b.x], pixel.x - a.x),
+		lerpf(_relief_values[b.y * width + a.x], _relief_values[b.y * width + b.x], pixel.x - a.x), pixel.y - a.y)
+	# Bound memory while keeping frequently used fixed scenery anchors hot.
+	if _relief_cache.size() < 8192: _relief_cache[uv] = value
+	return value
+
+func _build_land_relief() -> void:
+	const N := 128
+	var dem: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://assets/geography/poyang-elevation.json"))
+	assert(int(dem["size"]) == N and dem["north_up"], "Elevation grid must match the north-up terrain")
+	var elevations: Array = dem["elevation"]
+	var river_surface := Image.create(N, N, false, Image.FORMAT_R8)
+	relief_image = Image.create(N, N, false, Image.FORMAT_RF)
+	for y in N:
+		for x in N:
+			var uv := Vector2(x + 0.5, y + 0.5) / N * 2.0 - Vector2.ONE * 0.5
+			var rivers := _river_distances_squared(uv)
+			var margin := minf(sqrt(rivers.x) - YANGTZE_HALF_WIDTH, sqrt(rivers.y) - GAN_HALF_WIDTH)
+			river_surface.set_pixel(x, y, Color.WHITE if margin < 0.014 else Color.BLACK)
+			var height := 0.0
+			if _is_exterior_land(uv) and not _is_water(uv, true):
+				var fade := smoothstep(0.035, 0.075, margin)
+				fade *= smoothstep(0.23, 0.30, uv.distance_to(CREEPER_ANCHOR))
+				if Rect2(Vector2.ZERO, Vector2.ONE).has_point(uv):
+					var shore := shore_image.get_pixel(clampi(int(uv.x * shore_image.get_width()), 0, shore_image.get_width() - 1), clampi(int(uv.y * shore_image.get_height()), 0, shore_image.get_height() - 1))
+					if shore.g > 0.0: fade *= smoothstep(10.0, 28.0, (shore.r - 0.5) * 128.0)
+				for home in house_sites: fade *= smoothstep(0.022, 0.044, uv.distance_to(home))
+				# Compress surveyed relief to the existing gentle sandbox amplitude.
+				# Low alluvial plains stay low; mountains remain at their real locations.
+				var elevation := maxf(0.0, float(elevations[y * N + x]) - 15.0)
+				height = fade * 2.05 * pow(clampf(elevation / 1200.0, 0.0, 1.0), 0.55)
+			relief_image.set_pixel(x, y, Color(height, 0, 0))
+	_relief_values = relief_image.get_data().to_float32_array()
+	_relief_cache.clear()
+	relief_texture = ImageTexture.create_from_image(relief_image)
+	river_surface_texture = ImageTexture.create_from_image(river_surface)
 
 func _wildlife_point(uv: Vector2) -> Vector2:
 	# Undo the overlay's camera zoom for local coordinates; its scale then makes
 	# every sprite and ripple zoom in sync with the ground and Creeper decal.
-	var wildlife := get_node("Wildlife") as Control
-	return (wildlife.get_transform().affine_inverse() * _point(uv)).round()
+	if (camera_tween and camera_tween.is_running()) or (hand_view_tween and hand_view_tween.is_running()):
+		return _shadow_point(uv)
+	return (_overlay_inverse * _point(uv)).round()
 
 func _ground_position(uv: Vector2) -> Vector3:
 	return Vector3((uv.x - 0.5) * GROUND_SIZE, 0.0, (uv.y - 0.5) * GROUND_SIZE)
@@ -416,17 +618,18 @@ func _ground_position(uv: Vector2) -> Vector3:
 func _bird_facing(bird: Dictionary) -> float:
 	# Heading is stored in map coordinates; facing must follow screen motion.
 	var direction := Vector2.from_angle(float(bird["angle"]))
-	var center := Vector2(0.5, 0.5)
-	var screen_direction := map_camera.unproject_position(_ground_position(center + direction * 0.01)) - map_camera.unproject_position(_ground_position(center))
+	var screen_direction := (_screen_projection.x * direction.x + _screen_projection.y * direction.y) * 0.01
 	return -1.0 if screen_direction.x < -0.0001 else 1.0
 
 func _terrain_color(uv: Vector2) -> Color:
+	if uv.x < 0.0 or uv.x > 1.0 or uv.y < 0.0 or uv.y > 1.0: return LAND_COLOR
 	var x := clampi(int(uv.x * terrain_image.get_width()), 0, terrain_image.get_width() - 1)
 	var y := clampi(int(uv.y * terrain_image.get_height()), 0, terrain_image.get_height() - 1)
 	return terrain_image.get_pixel(x, y)
 
 func _is_water(uv: Vector2, baseline: bool = false) -> bool:
-	if _in_river_corridor(uv, 0.012): return true
+	var river_distance := _river_distances_squared(uv)
+	if river_distance.x <= YANGTZE_HALF_WIDTH * YANGTZE_HALF_WIDTH or river_distance.y <= GAN_HALF_WIDTH * GAN_HALF_WIDTH: return true
 	if not baseline and Rect2(Vector2.ZERO, Vector2.ONE).has_point(uv):
 		var mask := shore_image.get_pixel(clampi(int(uv.x * shore_image.get_width()), 0, shore_image.get_width() - 1), clampi(int(uv.y * shore_image.get_height()), 0, shore_image.get_height() - 1))
 		if mask.g > 0.0 and absf(_lake_offset()) > 0.01:
@@ -477,7 +680,7 @@ func _make_house_sites() -> void:
 				nearest = candidate
 		if nearest.x >= 0.0:
 			house_sites.append(nearest)
-	# Alternate sectors when settlement grows, so the first homes already
+	# Alternate sectors when community grows, so the first homes already
 	# form a visible ring instead of filling one side of the lake first.
 	var clockwise_sites := house_sites.duplicate()
 	house_sites.clear()
@@ -486,9 +689,12 @@ func _make_house_sites() -> void:
 			house_sites.append(clockwise_sites[index])
 	house_progress.resize(house_sites.size())
 
-func sync_settlement_targets() -> void:
-	# Preserve the old settlement-to-village rule; the extra art anchors stay reeds.
-	house_target_count = clampi(roundi(settlement / 100.0 * 7.0), 0, mini(7, house_sites.size()))
+func sync_community_targets() -> void:
+	# 社区指数决定可见村落规模，使用全部环湖位置；不再由围垦强度决定栋数。
+	house_target_count = _community_house_count()
+
+func _community_house_count() -> int:
+	return roundi(clampf(float(metrics.get("community", 0)), 0.0, 100.0) / 100.0 * house_sites.size())
 
 func _accept_habitat(kind: String, uv: Vector2) -> bool:
 	# Seeded placement uses the original geography, independent of the previous
@@ -529,7 +735,7 @@ func _reset_scenery() -> void:
 	visual_seed = GameState.run_seed
 	visual_rng.seed = int(GameState.run_seed) ^ 0x5EED5A7
 	for i in house_progress.size():
-		house_progress[i] = 1.0 if i < roundi(settlement / 100.0 * 7.0) else 0.0
+		house_progress[i] = 1.0 if i < _community_house_count() else 0.0
 	action_effects.clear()
 	plant_sites.clear()
 	for pid in GameState.PLANTS:
@@ -553,7 +759,24 @@ func _visible_trees() -> Array:
 	return sites.slice(0, count)
 
 func _bird_count(sid: String) -> int:
-	return mini(10, _visual_count("populations", sid, 10.0))
+	var count := _metric_bird_count(sid, metrics)
+	if transition_age < transition_duration and transition_from.has("metrics"):
+		count = maxi(count, _metric_bird_count(sid, transition_from["metrics"]))
+	return count
+
+## 候鸟总值映射到 0–50 只，轮流分配到五种鸟，避免逐物种取整放大误差。
+func _metric_bird_count(sid: String, values: Dictionary) -> int:
+	var species: Array = GameState.SPECIES.keys()
+	var index := species.find(sid)
+	if index < 0: return 0
+	var total := roundi(clampf(float(values.get("birds", 0)), 0.0, 100.0) / 100.0 * species.size() * 10)
+	return clampi(ceili(float(total - index) / species.size()), 0, 10)
+
+func _bird_visibility(sid: String, slot: int) -> float:
+	var target := 1.0 if slot < _metric_bird_count(sid, metrics) else 0.0
+	if transition_age >= transition_duration or not transition_from.has("metrics"): return target
+	var previous := 1.0 if slot < _metric_bird_count(sid, transition_from["metrics"]) else 0.0
+	return lerpf(previous, target, smoothstep(0.0, 1.0, transition_age / transition_duration))
 
 func _visual_count(bucket: String, key: String, divisor: float) -> int:
 	var target: Dictionary = metrics if bucket == "metrics" else (plants if bucket == "plants" else populations)
@@ -641,6 +864,8 @@ func _px(c: Control, p: Vector2, rect: Rect2, color: Color, scale_px: float = 2.
 	c.draw_rect(Rect2(p + rect.position * scale_px, rect.size * scale_px), color)
 
 func _build_river_routes() -> void:
+	_route_lengths.clear()
+	_river_distance_cache.clear()
 	yangtze_route.assign(RiverRoutes.YANGTZE)
 	gan_route.assign(RiverRoutes.GAN)
 	# Carry the boundary tangents well past every supported window's view.
@@ -651,12 +876,30 @@ func _build_river_routes() -> void:
 	var south := (gan_route[0] - gan_route[5]).normalized()
 	gan_route.push_front(gan_route[0] + south * 2.5)
 
+func _near_route(uv: Vector2, route: Array[Vector2], radius: float) -> bool:
+	for i in range(1, route.size()):
+		var closest := Geometry2D.get_closest_point_to_segment(uv, route[i - 1], route[i])
+		if uv.distance_squared_to(closest) <= radius * radius: return true
+	return false
+
 func _in_river_corridor(uv: Vector2, radius: float) -> bool:
-	for route in [yangtze_route, gan_route]:
+	var distances := _river_distances_squared(uv)
+	return minf(distances.x, distances.y) <= radius * radius
+
+func _river_distances_squared(uv: Vector2) -> Vector2:
+	# River geometry is fixed; only the animated lake mask changes with water
+	# level. Cache exact distances, so every existing corridor radius still works.
+	if _river_distance_cache.has(uv): return _river_distance_cache[uv]
+	var distances := Vector2(INF, INF)
+	for route_index in 2:
+		var route: Array[Vector2] = yangtze_route if route_index == 0 else gan_route
 		for i in range(1, route.size()):
 			var closest := Geometry2D.get_closest_point_to_segment(uv, route[i - 1], route[i])
-			if uv.distance_squared_to(closest) < radius * radius: return true
-	return false
+			distances[route_index] = minf(distances[route_index], uv.distance_squared_to(closest))
+	# Bound memory when animated agents query new positions over a long session.
+	if _river_distance_cache.size() >= 8192: _river_distance_cache.clear()
+	_river_distance_cache[uv] = distances
+	return distances
 
 func _make_river_bank_material() -> ShaderMaterial:
 	return _make_ground_material(true)
@@ -665,17 +908,28 @@ func _make_ground_material(bank: bool) -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = GROUND_SHADER
 	material.set_shader_parameter("terrain_texture", LANDSCAPE)
+	material.set_shader_parameter("exterior_mask", exterior_texture)
 	material.set_shader_parameter("shore_distance", SHORE_DISTANCE)
 	material.set_shader_parameter("river_bank", bank)
+	material.set_shader_parameter("terrain_relief", not bank)
+	material.set_shader_parameter("relief_height", relief_texture)
+	material.set_shader_parameter("river_surface_mask", river_surface_texture)
 	material.set_shader_parameter("ground_size", GROUND_SIZE)
-	material.set_shader_parameter("bank_color", Color("d8c68d"))
+	material.set_shader_parameter("bank_color", VisualTheme.SAND)
+	material.set_shader_parameter("meadow_color", LAND_COLOR)
+	# The artwork's base grass drives brightness on both sides of its boundary.
+	material.set_shader_parameter("meadow_basis", Color("829666"))
+	for entry in [["summer_meadow", VisualTheme.SUMMER_MEADOW], ["autumn_meadow", VisualTheme.AUTUMN_MEADOW],
+		["snow_color", VisualTheme.SNOW], ["water_deep", VisualTheme.WATER_DEEP], ["water_mid", VisualTheme.WATER_MID],
+		["water_shallow", VisualTheme.WATER_SHALLOW], ["sand_color", VisualTheme.SAND], ["soil_color", VisualTheme.SOIL]]:
+		material.set_shader_parameter(entry[0], entry[1])
 	return material
 
 func _build_river_mesh(parent: Node3D, route: Array[Vector2], half_width: float) -> void:
 	# Individual ground triangles handle tight river bends without intersecting
 	# canvas polygons. Banks, shallows and water share the actual 3D camera.
-	for band in 3:
-		var width: float = half_width + [0.007, 0.0, -0.004][band]
+	for band in 2:
+		var width: float = half_width + [0.007, 0.0][band]
 		var surface := SurfaceTool.new()
 		surface.begin(Mesh.PRIMITIVE_TRIANGLES)
 		var lift := Vector3(0, 0.01 + band * 0.006, 0)
@@ -693,41 +947,72 @@ func _build_river_mesh(parent: Node3D, route: Array[Vector2], half_width: float)
 				surface.add_vertex(_ground_position(uv + Vector2.from_angle(TAU * float(k + 1) / 12.0) * width) + lift)
 		var mesh := MeshInstance3D.new()
 		mesh.mesh = surface.commit()
-		var material := StandardMaterial3D.new()
-		material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		material.cull_mode = BaseMaterial3D.CULL_DISABLED
-		material.albedo_color = [Color("d8c68d"), Color("63afcb"), Color("176783")][band]
-		mesh.material_override = river_bank_material if band == 0 else material
+		if band == 0:
+			mesh.material_override = river_bank_material
+		else:
+			var material := _make_ground_material(false)
+			material.set_shader_parameter("terrain_relief", false)
+			material.set_shader_parameter("river_water", true)
+			river_water_materials.append(material)
+			mesh.material_override = material
 		mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		parent.add_child(mesh)
 
 func _river_sample(route: Array[Vector2], phase: float) -> Dictionary:
-	var total := 0.0
-	for i in range(1, route.size()): total += route[i - 1].distance_to(route[i])
-	var remaining := fposmod(phase, 1.0) * total
-	for i in range(1, route.size()):
-		var distance := route[i - 1].distance_to(route[i])
-		if remaining <= distance:
-			return {"pos": route[i - 1].lerp(route[i], remaining / maxf(distance, 0.00001)),
-				"direction": (route[i] - route[i - 1]).normalized()}
-		remaining -= distance
-	return {"pos": route[-1], "direction": Vector2.RIGHT}
+	if route.size() < 2: return {"pos": route[0] if not route.is_empty() else Vector2.ZERO, "direction": Vector2.RIGHT}
+	# Only built-in immutable routes are cached; arbitrary callers retain exact
+	# sampling even when they edit their route in place.
+	var key := "yangtze" if is_same(route, yangtze_route) else ("gan" if is_same(route, gan_route) else "")
+	var lengths := PackedFloat64Array()
+	if not key.is_empty() and _route_lengths.has(key):
+		lengths = _route_lengths[key]
+	else:
+		lengths.append(0.0)
+		for i in range(1, route.size()): lengths.append(lengths[-1] + route[i - 1].distance_to(route[i]))
+		if not key.is_empty(): _route_lengths[key] = lengths
+	var distance := fposmod(phase, 1.0) * lengths[-1]
+	var low := 1
+	var high := route.size() - 1
+	while low < high:
+		var mid := (low + high) / 2
+		if lengths[mid] < distance: low = mid + 1
+		else: high = mid
+	return {"pos": route[low - 1].lerp(route[low], (distance - lengths[low - 1]) / maxf(lengths[low] - lengths[low - 1], 0.00001)),
+		"direction": (route[low] - route[low - 1]).normalized()}
+
+func _yangtze_boat_sample(index: int, time: float) -> Dictionary:
+	var heading := 1.0 if index % 2 == 0 else -1.0
+	var phase := time * RIVER_BOAT_SPEED * heading + float(index) / 10.0
+	var sample := _river_sample(yangtze_route, phase)
+	# Average across bends so lanes and facing do not snap at short OSM segments.
+	var before: Vector2 = _river_sample(yangtze_route, phase - 0.001)["pos"]
+	var after: Vector2 = _river_sample(yangtze_route, phase + 0.001)["pos"]
+	var tangent := (after - before).normalized()
+	var normal := Vector2(-tangent.y, tangent.x)
+	return {"pos": sample["pos"] + normal * RIVER_BOAT_LANE * heading, "heading": heading, "direction": tangent * heading}
+
+func _river_boat_rotation(direction: Vector2, mirror: float) -> float:
+	var artwork_forward := Vector2(FISHING_BOAT_FORWARD.x * mirror, FISHING_BOAT_FORWARD.y)
+	return direction.angle() - artwork_forward.angle()
+
+func _draw_fishing_boat(c: Control, p: Vector2, heading: float = 1.0, direction: Vector2 = Vector2.ZERO) -> void:
+	if direction == Vector2.ZERO:
+		c.draw_set_transform(p, 0.0, Vector2(heading, 1.0))
+		_draw_sprite(c, Vector2.ZERO, 7, FISHING_BOAT_EXTENT)
+	else:
+		# Account for the artwork's diagonal bow; rotate around the hull, not its feet.
+		var mirror := -heading
+		c.draw_set_transform(p, _river_boat_rotation(direction, mirror), Vector2(mirror, 1.0))
+		c.draw_texture_rect(sprites[7], Rect2(-FISHING_BOAT_EXTENT * Vector2(0.5, 0.60), FISHING_BOAT_EXTENT), false)
+	c.draw_set_transform(Vector2.ZERO)
 
 func _draw_yangtze_boats(c: Control) -> void:
 	for i in 10:
-		var sample := _river_sample(yangtze_route, elapsed * 0.007 + float(i) / 10.0)
-		var uv: Vector2 = sample["pos"]
-		var p := _wildlife_point(uv)
-		var direction: Vector2 = (_wildlife_point(uv + sample["direction"] * 0.015) - p).normalized()
-		c.draw_set_transform(p, direction.angle())
-		# Small original pixel launches, with a hull, cabin and trailing wake.
-		c.draw_line(Vector2(-24, -3), Vector2(-14, -2), Color("97d3cc"), 1.0)
-		c.draw_line(Vector2(-24, 3), Vector2(-14, 2), Color("97d3cc"), 1.0)
-		c.draw_colored_polygon(PackedVector2Array([Vector2(-13,-4), Vector2(8,-4), Vector2(14,0), Vector2(8,4), Vector2(-13,4)]), Color("694d36"))
-		c.draw_rect(Rect2(-10, -3, 17, 6), Color("c79959"))
-		c.draw_rect(Rect2(-6, -3, 8, 6), Color("f0dcaa"))
-		c.draw_rect(Rect2(-4, -2, 4, 4), Color("4c7f83"))
-		c.draw_set_transform(Vector2.ZERO)
+		var sample := _yangtze_boat_sample(i, elapsed)
+		var p := _wildlife_point(sample["pos"])
+		p.y += sin(elapsed * 0.65 + float(i)) * 0.6 if not reduced_motion else 0.0
+		var direction := (_wildlife_point(sample["pos"] + sample["direction"] * 0.01) - _wildlife_point(sample["pos"])).normalized()
+		_draw_fishing_boat(c, p, sample["heading"], direction)
 
 func _build_meadow_scenery() -> void:
 	# Original code-drawn pixel props: grass, flowers, shrubs, stones and pines.
@@ -748,6 +1033,7 @@ func _build_meadow_scenery() -> void:
 			for x in rows[y].length():
 				if palette.has(rows[y][x]): image.set_pixel(x, y, palette[rows[y][x]])
 		prop_textures.append(ImageTexture.create_from_image(image))
+	pine_seasons = preload("res://scripts/seasonal_tree_art.gd").build_pine(prop_textures[4].get_image())
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 20261002
 	for y in range(-12, 33):
@@ -764,83 +1050,141 @@ func _build_meadow_scenery() -> void:
 			scenery_props.append({"pos": uv, "kind": kind, "scale": rng.randf_range(1.9, 3.0)})
 	scenery_props.sort_custom(func(a: Dictionary, b: Dictionary): return a["pos"].x + a["pos"].y < b["pos"].x + b["pos"].y)
 
-func _draw_meadow_scenery(c: Control) -> void:
-	for prop in scenery_props:
-		if _is_water(prop["pos"]): continue
-		if prop["kind"] == 5:
-			_draw_tree(c, _wildlife_point(prop["pos"]), float(prop["scale"]) * 0.55, prop["pos"])
-			continue
-		var texture: Texture2D = prop_textures[prop["kind"]]
-		var extent := texture.get_size() * float(prop["scale"])
-		var p := _wildlife_point(prop["pos"])
-		c.draw_texture_rect(texture, Rect2((p - extent * Vector2(0.5, 0.9)).round(), extent.round()), false)
+func _scenery_draw_order() -> Array[Dictionary]:
+	var key: Array = [hash(scenery_props), hash(plant_sites), hash(summer_flowers), hash(house_sites),
+		displayed_plants.duplicate(), displayed_islands, _lake_offset(), season, previous_season, season_progress,
+		size if season_progress < 1.0 else Vector2.ZERO,
+		_screen_projection if season_progress < 1.0 else Transform2D.IDENTITY]
+	if key != _static_key:
+		_static_key = key
+		_static_items = _build_static_scenery()
+	var moving: Array[Dictionary] = []
+	for bird in bird_agents:
+		if int(bird["slot"]) < _bird_count(str(bird["sid"])) and not int(bird["state"]) in [3, 5]:
+			moving.append({"kind": "bird", "uv": bird["pos"], "bird": bird})
+	moving.append({"kind": "boat", "uv": BOAT_ANCHOR})
+	for i in moving.size():
+		moving[i]["depth"] = _scenery_depth(moving[i]["uv"])
+		moving[i]["order"] = _static_items.size() + i
+	moving.sort_custom(_scenery_before)
+	# Merge already sorted fixed scenery with the small moving population.
+	# Insertion indices preserve the original equal-depth ordering.
+	var items: Array[Dictionary] = []
+	var i := 0
+	var j := 0
+	while i < _static_items.size() and j < moving.size():
+		if _scenery_before(_static_items[i], moving[j]):
+			items.append(_static_items[i])
+			i += 1
+		else:
+			items.append(moving[j])
+			j += 1
+	while i < _static_items.size():
+		items.append(_static_items[i])
+		i += 1
+	while j < moving.size():
+		items.append(moving[j])
+		j += 1
+	return items
 
-func _draw_wildlife(c: Control) -> void:
-	_draw_meadow_scenery(c)
-	_draw_yangtze_boats(c)
-	# Frame the playable shore lightly; keep the secret Creeper's clearing open.
+func _scenery_depth(uv: Vector2) -> float:
+	# Positive orthographic zoom and vertical pan preserve depth ordering.
+	# Use camera-independent depth to avoid resorting static scenery mid-tween.
+	return uv.x * sin(VIEW_AZIMUTH) + uv.y * cos(VIEW_AZIMUTH) - _relief_at(uv) / GROUND_SIZE / tan(VIEW_PITCH)
+
+func _scenery_before(a: Dictionary, b: Dictionary) -> bool:
+	return int(a["order"]) < int(b["order"]) if float(a["depth"]) == float(b["depth"]) else float(a["depth"]) < float(b["depth"])
+
+func _build_static_scenery() -> Array[Dictionary]:
+	var items: Array[Dictionary] = []
+	for prop in scenery_props:
+		if not _is_water(prop["pos"]): items.append({"kind": "prop", "uv": prop["pos"], "prop": prop})
+	if season in [0, 1] or (season_progress < 1.0 and previous_season in [0, 1]):
+		for uv in summer_flowers:
+			if _is_exterior_land(uv) and _flower_amount_at(uv) > 0.01: items.append({"kind": "flower", "uv": uv})
 	for uv in EDGE_TREE_TARGETS:
 		var clear := uv.distance_to(CREEPER_ANCHOR) > 0.13
 		for home in house_sites:
-			if uv.distance_to(home) < 0.065:
-				clear = false
-				break
-		if clear and _is_land(uv):
-			_draw_tree(c, _wildlife_point(uv), 0.78, uv)
-	# Ripples occupy open water, keeping the HUD readable.
+			if uv.distance_to(home) < 0.065: clear = false; break
+		if clear and _is_land(uv): items.append({"kind": "tree", "uv": uv})
+	for pid in GameState.PLANTS:
+		var sites: Array = plant_sites.get(pid, [])
+		for i in mini(_visual_count("plants", str(pid), 7.0), sites.size()):
+			var growth := _visual_weight("plants", str(pid), i, 7.0)
+			if growth > 0.001: items.append({"kind": "plant", "uv": sites[i], "pid": str(pid), "growth": growth})
+	for i in mini(ISLAND_ANCHORS.size(), ceili(displayed_islands)):
+		items.append({"kind": "island", "uv": ISLAND_ANCHORS[i], "index": i})
+	for i in house_sites.size(): items.append({"kind": "house", "uv": house_sites[i], "index": i})
+	for i in items.size():
+		items[i]["depth"] = _scenery_depth(items[i]["uv"])
+		items[i]["order"] = i
+	items.sort_custom(_scenery_before)
+	return items
+
+func _draw_wildlife(c: Control) -> void:
+	_draw_yangtze_boats(c)
 	for i in 28:
-		var p := _wildlife_point(WATER_ANCHORS[i % WATER_ANCHORS.size()])
+		var uv: Vector2 = WATER_ANCHORS[i % WATER_ANCHORS.size()]
+		if not _is_water(uv): continue
+		var p := _wildlife_point(uv)
 		var alpha := 0.10 + 0.13 * (sin(elapsed * 1.5 + i * 2.0) + 1.0)
 		c.draw_rect(Rect2(p, Vector2(8 + i % 4 * 3, 2)), Color(0.77, 0.94, 0.83, alpha))
 	for i in mini(12, _visual_count("metrics", "fish", 12.0)):
-		var p := _wildlife_point(WATER_ANCHORS[i % WATER_ANCHORS.size()])
+		var uv: Vector2 = WATER_ANCHORS[i % WATER_ANCHORS.size()]
+		if not _is_water(uv): continue
+		var p := _wildlife_point(uv)
 		p.x += round(sin(elapsed * 0.35 + i) * 4)
 		_draw_sprite(c, p, 3, Vector2(15, 24), Color(0.6, 0.85, 0.8, 0.45 * _visual_weight("metrics", "fish", i, 12.0)))
-	# The old scene used plant populations / 7. Keep those visual thresholds and
-	# scatter each kind only on its matching terrain color.
-	for pid in GameState.PLANTS:
-		var sites: Array = plant_sites.get(pid, [])
-		var count := mini(_visual_count("plants", str(pid), 7.0), sites.size())
-		for i in count:
-			var p := _wildlife_point(sites[i])
-			var growth := _visual_weight("plants", str(pid), i, 7.0)
-			if growth <= 0.001: continue
-			# 赤山树是立着的，先给它垫影子 —— 影子多边形走绝对屏幕坐标，
-			# 必须赶在下面这行缩放变换之前画，否则会被 growth 再缩一次。
-			if str(pid) == "chishan":
-				_draw_shadow(c, sites[i], _px_to_uv(TREE_SHADOW_RADIUS * growth), 0.24, TREE_SHADOW_FOOT, "tree")
-			c.draw_set_transform(p, 0.0, Vector2.ONE * growth)
-			p = Vector2.ZERO
-			match str(pid):
-				"lian":
-					c.draw_texture_rect(bird_sprites[5], Rect2(p - Vector2(19, 21), Vector2(38, 38)), false)
-				"luwei":
-					_draw_sprite(c, p, 4, Vector2(36, 48))
-				"chishan":
-					_draw_tree(c, p)
-				"kucao":
-					c.draw_line(p + Vector2(-4, 3), p + Vector2(-1, -4), Color("7aa980"), 2, false)
-					c.draw_line(p + Vector2(3, 3), p + Vector2(1, -5), Color("89b68c"), 2, false)
-				_:
-					_draw_marsh(c, p, str(pid))
-			c.draw_set_transform(Vector2.ZERO)
-	for i in mini(ISLAND_ANCHORS.size(), ceili(displayed_islands)):
-		var p := _wildlife_point(ISLAND_ANCHORS[i % ISLAND_ANCHORS.size()])
-		var growth := clampf(displayed_islands - float(i), 0.0, 1.0)
-		p.y += round(sin(elapsed + i) * 1.0)
-		if growth < 0.99:
-			c.draw_arc(p, 9 + (1.0 - growth) * 15, 0, TAU, 16, Color(0.72, 0.93, 0.98, 1.0 - growth), 2.0)
-		var extent := Vector2(48, 48) * maxf(0.08, growth)
-		p.y += (1.0 - growth) * 14.0
-		c.draw_texture_rect(FLOATING_ISLAND, Rect2((p - extent * Vector2(0.5, 0.65)).round(), extent), false, Color(1, 1, 1, growth))
-	_draw_houses(c)
+	for item in _render_items:
+		var p := _wildlife_point(item["uv"])
+		match str(item["kind"]):
+			"prop":
+				var prop: Dictionary = item["prop"]
+				if prop["kind"] == 5: _draw_tree(c, p, float(prop["scale"]) * 0.55, item["uv"])
+				else:
+					var texture: Texture2D = prop_textures[prop["kind"]]
+					if prop["kind"] == 4: texture = pine_seasons[season]
+					var extent := texture.get_size() * float(prop["scale"])
+					var rect := Rect2((p - extent * Vector2(0.5, 0.9)).round(), extent.round())
+					if prop["kind"] == 4:
+						var amount := _tree_season_blend(item["uv"])
+						c.draw_texture_rect(pine_seasons[previous_season], rect, false)
+						c.draw_texture_rect(texture, rect, false, Color(1, 1, 1, amount))
+					else: c.draw_texture_rect(texture, rect, false, _season_prop_tint(item["uv"]))
+			"flower": _draw_summer_flower(c, p, item["uv"])
+			"tree": _draw_tree(c, p, 0.78, item["uv"])
+			"plant": _draw_plant(c, p, str(item["pid"]), float(item["growth"]), item["uv"])
+			"island": _draw_island(c, int(item["index"]))
+			"house": _draw_house(c, int(item["index"]))
+			"bird": _draw_bird_actor(c, item["bird"])
+			"boat":
+				p.x += round(sin(elapsed * 0.06) * 4)
+				_draw_fishing_boat(c, p)
+	# Flying birds occupy the air layer; walking/feeding birds obey ground depth.
 	for bird in bird_agents:
-		if int(bird["slot"]) < _bird_count(str(bird["sid"])):
-			_draw_bird_actor(c, bird)
-	var boat_pos := _wildlife_point(BOAT_ANCHOR)
-	boat_pos.x += round(sin(elapsed * 0.06) * 4)
-	_draw_sprite(c, boat_pos, 7, Vector2(60, 62))
+		if int(bird["slot"]) < _bird_count(str(bird["sid"])) and int(bird["state"]) in [3, 5]: _draw_bird_actor(c, bird)
 	_draw_action_effects(c)
+
+func _draw_plant(c: Control, p: Vector2, pid: String, growth: float, uv: Vector2 = Vector2.INF) -> void:
+	c.draw_set_transform(p, 0.0, Vector2.ONE * growth)
+	match pid:
+		"lian": c.draw_texture_rect(bird_sprites[5], Rect2(Vector2(-19, -21), Vector2(38, 38)), false)
+		"luwei": _draw_sprite(c, Vector2.ZERO, 4, Vector2(36, 48))
+		"chishan": _draw_tree(c, Vector2.ZERO, 1.0, uv)
+		"kucao":
+			c.draw_line(Vector2(-4, 3), Vector2(-1, -4), Color("7aa980"), 2, false)
+			c.draw_line(Vector2(3, 3), Vector2(1, -5), Color("89b68c"), 2, false)
+		_: _draw_marsh(c, Vector2.ZERO, pid)
+	c.draw_set_transform(Vector2.ZERO)
+
+func _draw_island(c: Control, i: int) -> void:
+	var p := _wildlife_point(ISLAND_ANCHORS[i])
+	var growth := clampf(displayed_islands - float(i), 0.0, 1.0)
+	p.y += round(sin(elapsed + i) * 1.0)
+	if growth < 0.99: c.draw_arc(p, 9 + (1.0 - growth) * 15, 0, TAU, 16, Color(0.72, 0.93, 0.98, 1.0 - growth), 2.0)
+	var extent := Vector2(48, 48) * maxf(0.08, growth)
+	p.y += (1.0 - growth) * 14.0
+	c.draw_texture_rect(FLOATING_ISLAND, Rect2((p - extent * Vector2(0.5, 0.65)).round(), extent), false, Color(1, 1, 1, growth))
 
 func _draw_action_effects(c: Control) -> void:
 	for effect in action_effects:
@@ -884,9 +1228,7 @@ func _house_shape(art_index: int) -> Dictionary:
 ## 76px 房框里的像素长度 → 地图 uv 长度。屏幕像素与 uv 的比例由当前相机决定
 ## （菜单拉远 / 对局推近时会变，所以每次都现算，不写死）。
 func _px_to_uv(px: float) -> float:
-	var origin := _wildlife_point(Vector2(0.5, 0.5))
-	var step := _wildlife_point(Vector2(0.51, 0.5))
-	var px_per_uv := origin.distance_to(step) / 0.01
+	var px_per_uv := _shadow_projection.x.length()
 	if px_per_uv <= 0.0001:
 		return 0.0
 	return px / px_per_uv
@@ -894,19 +1236,24 @@ func _px_to_uv(px: float) -> float:
 ## 影子的顶点不能走 _wildlife_point —— 那函数里的两次 round() 是为了让贴图/物件像素对齐，
 ## 拿来连多边形会把每个顶点都吸到整数格，半径一大就显出锯齿和棱角（看起来"崩"）。这里保留浮点。
 func _shadow_point(uv: Vector2) -> Vector2:
-	var wildlife := get_node("Wildlife") as Control
-	return wildlife.get_transform().affine_inverse() * map_camera.unproject_position(_ground_position(uv))
+	return _shadow_projection * uv + _overlay_inverse.basis_xform(_relief_screen_offset(uv))
 
 ## 立着的东西要在地面上留下压扁的影子，"立"才读得出来。
 ## 正交相机下，地面上的圆投影到屏幕是个椭圆（长轴方向由相机方位角决定），
 ## 所以不写死屏幕轴向 —— 把一圈地图坐标投影出来连成多边形，方位角 / 俯角 / 缩放全都自动对上。
 func _shadow_polygon(uv: Vector2, radius_uv: float, segments: int = 40) -> PackedVector2Array:
-	var pts := PackedVector2Array()
-	for k in segments:
-		var a := TAU * float(k) / float(segments)
-		# 在地面平面上先按 SHADOW_FLATTEN 压扁，交给相机投影后才是最终形状。
-		pts.append(_shadow_point(uv + Vector2(cos(a), sin(a) * SHADOW_FLATTEN) * radius_uv))
-	return pts
+	if not _shadow_unit_rings.has(segments):
+		var ring := PackedVector2Array()
+		for k in segments:
+			var a := TAU * float(k) / float(segments)
+			ring.append(Vector2(cos(a), sin(a) * SHADOW_FLATTEN))
+		_shadow_unit_rings[segments] = ring
+	var unit_ring: PackedVector2Array = _shadow_unit_rings[segments]
+	var center := _shadow_point(uv)
+	var axis_x := _shadow_projection.x * radius_uv
+	var axis_y := _shadow_projection.y * radius_uv
+	# Native packed-array transform avoids a GDScript call for every vertex.
+	return Transform2D(axis_x, axis_y, center) * unit_ring
 
 ## foot = 影子中心相对落点再往下推多少像素（贴图底边 ≠ 落点，影子要比脚点再低一点才露得出来）。
 func _draw_shadow(c: Control, uv: Vector2, radius_uv: float, alpha: float = 0.22, foot: float = 0.0, kind: String = "building") -> void:
@@ -914,54 +1261,121 @@ func _draw_shadow(c: Control, uv: Vector2, radius_uv: float, alpha: float = 0.22
 		return
 	if radius_uv <= 0.0:
 		return
-	var pts := _shadow_polygon(uv, radius_uv)
-	if not is_zero_approx(foot):
-		for i in pts.size():
-			pts[i] += Vector2(0.0, foot)
-	c.draw_colored_polygon(pts, Color(0.05, 0.10, 0.09, alpha))
+	var pixel_radius := _shadow_point(uv + Vector2(radius_uv, 0)).distance_to(_shadow_point(uv))
+	# Very small growth/fade decals collapse below the polygon triangulator's
+	# precision. Fade them in only after they have a visible pixel footprint.
+	if pixel_radius < 1.0: return
+	alpha *= clampf((pixel_radius - 1.0) / 3.0, 0.0, 1.0)
+	# Keep the center on the sprite's snapped foot, while preserving continuous
+	# radii. Three faint bands give a soft contact edge without a blur dependency.
+	var center_offset := _wildlife_point(uv) - _shadow_point(uv) + Vector2(0.0, foot)
+	for band in [[1.05, 0.18], [0.90, 0.32], [0.70, 0.45]]:
+		var pts := _shadow_polygon(uv, radius_uv * float(band[0]))
+		pts = Transform2D(0.0, center_offset) * pts
+		c.draw_colored_polygon(pts, Color(0.08, 0.13, 0.11, alpha * float(band[1])))
+
+func _contact_shadow_specs(items: Array[Dictionary] = []) -> Array[Dictionary]:
+	var specs: Array[Dictionary] = []
+	if items.is_empty(): items = _scenery_draw_order()
+	for item in items:
+		var radius := 0.0
+		var foot := 0.0
+		var alpha := 0.20
+		var kind := "tree"
+		match str(item["kind"]):
+			"prop":
+				if int(item["prop"]["kind"]) != 5: continue
+				var scale_factor := float(item["prop"]["scale"]) * 0.55
+				radius = TREE_SHADOW_RADIUS * scale_factor
+				foot = TREE_SHADOW_FOOT * scale_factor
+			"tree":
+				radius = TREE_SHADOW_RADIUS * 0.78
+				foot = TREE_SHADOW_FOOT * 0.78
+			"plant":
+				if item["pid"] != "chishan": continue
+				radius = TREE_SHADOW_RADIUS * float(item["growth"])
+				foot = TREE_SHADOW_FOOT * float(item["growth"])
+			"house":
+				kind = "building"
+				var index := int(item["index"])
+				var phase: float = house_progress[index]
+				if phase <= 0.01:
+					radius = PLOT_SHADOW_RADIUS * 0.65
+					foot = PLOT_SHADOW_FOOT
+					alpha = 0.12
+				else:
+					var sc := maxf(0.12, phase * phase * (3.0 - 2.0 * phase))
+					var art_index := index % HOUSE_ART.size()
+					var shape := _house_shape(art_index)
+					radius = minf(float(HOUSE_SHADOW_RADIUS[art_index]), float(shape["half_w"]) * 1.12) * sc
+					foot = (float(shape["bottom"]) + float(HOUSE_SHADOW_FOOT[art_index]) * 0.5) * sc
+					alpha = 0.25
+			_: continue
+		if not _is_water(item["uv"]): specs.append({"uv": item["uv"], "radius": radius, "foot": foot, "alpha": alpha, "kind": kind})
+	return specs
+
+func _draw_contact_shadows(c: Control) -> void:
+	for spec in _render_shadow_specs:
+		_draw_shadow(c, spec["uv"], _px_to_uv(float(spec["radius"])), float(spec["alpha"]), float(spec["foot"]), str(spec["kind"]))
 
 func _draw_houses(c: Control) -> void:
-	var lit := roundi(float(metrics.get("community", 50)) / 100.0 * float(house_target_count))
-	for i in house_sites.size():
-		var uv: Vector2 = house_sites[i]
-		var p := _wildlife_point(uv)
-		var phase: float = house_progress[i]
-		# 空地：村子还没盖到这里，只有一个芦苇标记。它看着就是一株草本植物，所以影子也只能按
-		# 草本给小的 —— 挂一整块建筑月牙，看起来就是"草丛带着一个大影子"。
-		if phase <= 0.01:
-			_draw_shadow(c, uv, _px_to_uv(PLOT_SHADOW_RADIUS), 0.26, PLOT_SHADOW_FOOT, "building")
-			_draw_sprite(c, p, 4, Vector2(30, 40))
-			continue
-		var eased := phase * phase * (3.0 - 2.0 * phase)
-		var sc := maxf(0.12, eased)
-		var art_index := i % HOUSE_ART.size()
-		# 影子：椭圆半径**每张贴图一个数**（表格里逐栋调），随建造进度缩放；
-		# 中心压在房子贴图的视觉前底边上 → 后半个被房子挡住、前半个露在房前（竖直方向一半一半）。
-		var radius_px: float = float(HOUSE_SHADOW_RADIUS[art_index % HOUSE_SHADOW_RADIUS.size()]) * sc
-		var lift_px: float = float(HOUSE_SHADOW_FOOT[art_index % HOUSE_SHADOW_FOOT.size()]) * sc
-		var shape: Dictionary = _house_shape(art_index)
-		var foot: float = float(shape["bottom"]) * sc + lift_px
-		_draw_shadow(c, uv, _px_to_uv(radius_px), 0.36, foot, "building")
-		if phase < 0.99:
-			# Foundation and scaffold make both construction and wetland retreat legible.
-			c.draw_rect(Rect2(p + Vector2(-19, -7), Vector2(38, 8)), Color("6f6949"))
-			c.draw_rect(Rect2(p + Vector2(-20, -8), Vector2(3, 19)), Color("bca173"))
-			c.draw_rect(Rect2(p + Vector2(17, -8), Vector2(3, 19)), Color("bca173"))
-			for dust in 4:
-				var offset := Vector2(-23 + dust * 13, -12 - int(elapsed * 15.0 + float(i + dust)) % 8)
-				c.draw_rect(Rect2((p + offset).round(), Vector2(3, 3)), Color("e4ce9b"))
-		var extent := Vector2(HOUSE_BOX, HOUSE_BOX) * sc
-		var tint := Color.WHITE if i < lit else Color(0.66, 0.63, 0.56)
-		c.draw_texture_rect(HOUSE_ART[art_index], Rect2((p - extent * Vector2(0.5, HOUSE_ANCHOR_Y)).round(), extent.round()), false, tint)
-		if phase < 0.22 and i >= house_target_count:
-			_draw_sprite(c, p + Vector2(7, 0), 4, Vector2(16, 23))
+	for i in house_sites.size(): _draw_house(c, i)
 
-func _draw_tree(c: Control, p: Vector2, scale_factor: float = 1.0, uv: Vector2 = Vector2.INF) -> void:
-	# 树也要在地面上留影子，"立着"才读得出来。必须传 uv —— 屏幕点反推不出地形坐标。
-	if uv != Vector2.INF:
-		_draw_shadow(c, uv, _px_to_uv(TREE_SHADOW_RADIUS * scale_factor), 0.24, TREE_SHADOW_FOOT * scale_factor, "tree")
+func _draw_house(c: Control, i: int) -> void:
+	var lit := roundi(float(metrics.get("community", 50)) / 100.0 * float(house_target_count))
+	var uv: Vector2 = house_sites[i]
+	var p := _wildlife_point(uv)
+	var phase: float = house_progress[i]
+	# 空地：村子还没盖到这里，只有一个芦苇标记。它看着就是一株草本植物，所以影子也只能按
+	# 草本给小的 —— 挂一整块建筑月牙，看起来就是"草丛带着一个大影子"。
+	if phase <= 0.01:
+		_draw_sprite(c, p, 4, Vector2(30, 40))
+		return
+	var eased := phase * phase * (3.0 - 2.0 * phase)
+	var sc := maxf(0.12, eased)
+	var art_index := i % HOUSE_ART.size()
+	if phase < 0.99:
+		# Foundation and scaffold make both construction and wetland retreat legible.
+		c.draw_rect(Rect2(p + Vector2(-19, -7), Vector2(38, 8)), Color("6f6949"))
+		c.draw_rect(Rect2(p + Vector2(-20, -8), Vector2(3, 19)), Color("bca173"))
+		c.draw_rect(Rect2(p + Vector2(17, -8), Vector2(3, 19)), Color("bca173"))
+		for dust in 4:
+			var offset := Vector2(-23 + dust * 13, -12 - int(elapsed * 15.0 + float(i + dust)) % 8)
+			c.draw_rect(Rect2((p + offset).round(), Vector2(3, 3)), Color("e4ce9b"))
+	var extent := Vector2(HOUSE_BOX, HOUSE_BOX) * sc
+	var tint := Color.WHITE if i < lit else Color(0.66, 0.63, 0.56)
+	c.draw_texture_rect(HOUSE_ART[art_index], Rect2((p - extent * Vector2(0.5, HOUSE_ANCHOR_Y)).round(), extent.round()), false, tint)
+	if phase < 0.22 and i >= house_target_count:
+		_draw_sprite(c, p + Vector2(7, 0), 4, Vector2(16, 23))
+
+
+func _tree_season_blend(uv: Vector2) -> float:
+	if reduced_motion or uv == Vector2.INF: return 1.0
+	var delay := clampf(_point(uv).y / maxf(size.y, 1.0), 0.0, 1.0) * SEASON_CHANGE_DURATION
+	return clampf((tree_season_age - delay) / 1.8, 0.0, 1.0)
+
+func _draw_tree(c: Control, p: Vector2, scale_factor: float = 1.0, _uv: Vector2 = Vector2.INF) -> void:
+	# GroundShadows renders its contact decal below every upright sprite.
 	var extent := Vector2(40, 44) * scale_factor
-	c.draw_texture_rect(SHORE_TREE, Rect2((p - extent * Vector2(0.5, 0.9)).round(), extent.round()), false)
+	var rect := Rect2((p - extent * Vector2(0.5, 0.9)).round(), extent.round())
+	var amount := _tree_season_blend(_uv)
+	if amount >= 1.0 or previous_season == season:
+		c.draw_texture_rect(seasonal_trees[season], rect, false)
+	elif season == 0 and previous_season == 3:
+		# Fixed leaf-cluster masks grow real opaque leaves instead of fading a crown.
+		c.draw_texture_rect(tree_frames[0][clampi(roundi(amount * 16), 0, 16)], rect, false)
+	elif season == 3:
+		c.draw_texture_rect(tree_frames[3][clampi(roundi(amount * 16), 0, 16)], rect, false)
+		if not reduced_motion and amount > 0.02 and amount < 0.98:
+			for i in 6:
+				var fall := fposmod(amount * 1.7 + float(i) / 6.0, 1.0)
+				var leaf := p + Vector2((float(i) - 2.5) * 5.0 + sin(fall * TAU + i) * 4.0, -28.0 + fall * 31.0) * scale_factor
+				var world_leaf := leaf if _uv == Vector2.INF else _wildlife_point(_uv) + leaf - p
+				if not _creeper_weather_exclusion().has_point(world_leaf):
+					c.draw_rect(Rect2(leaf.round(), Vector2(2, 2) * scale_factor), Color("dbb074", 1.0 - fall))
+	else:
+		c.draw_texture_rect(seasonal_trees[previous_season], rect, false)
+		c.draw_texture_rect(seasonal_trees[season], rect, false, Color(1, 1, 1, amount))
 
 func _draw_marsh(c: Control, p: Vector2, pid: String) -> void:
 	var color := Color("a8b86a") if pid == "lihao" else Color("81a26d")
@@ -992,7 +1406,7 @@ func _bird_frame_region(species: int, frame: int) -> Rect2:
 	return Rect2(Vector2(frame % 4, floori(float(frame) / 4.0)) * tile, tile)
 
 func _draw_bird_actor(c: Control, bird: Dictionary) -> void:
-	var visibility := _visual_weight("populations", str(bird["sid"]), int(bird["slot"]), 10.0)
+	var visibility := _bird_visibility(str(bird["sid"]), int(bird["slot"]))
 	if visibility <= 0.001: return
 	var sprite_index: int = SPECIES_ART.get(str(bird["sid"]), 0)
 	var state: int = bird["state"]
@@ -1010,3 +1424,132 @@ func _draw_bird_actor(c: Control, bird: Dictionary) -> void:
 	c.draw_set_transform(p, 0.0, Vector2(_bird_facing(bird), 1.0))
 	c.draw_texture_rect_region(BIRD_ACTIONS[sprite_index], Rect2(-extent * Vector2(0.5, 0.875), extent), _bird_frame_region(sprite_index, frame), Color(1, 1, 1, visibility))
 	c.draw_set_transform(Vector2.ZERO)
+
+## Flood-fill from the map edges: isolated lake islands stay outside this mask.
+func _build_exterior_seasons() -> void:
+	const N := 256
+	exterior_image = Image.create(N, N, false, Image.FORMAT_R8)
+	var open := PackedByteArray()
+	open.resize(N * N)
+	for y in N:
+		for x in N:
+			var col := _terrain_color(Vector2(x + 0.5, y + 0.5) / N)
+			open[y * N + x] = 0 if col.b > col.g and col.g > col.r else 1
+	var queue := PackedInt32Array()
+	for y in N:
+		for x in N:
+			if (x == 0 or y == 0 or x == N - 1 or y == N - 1) and open[y * N + x] == 1:
+				open[y * N + x] = 2
+				queue.append(y * N + x)
+	var head := 0
+	while head < queue.size():
+		var index := queue[head]
+		head += 1
+		var x := index % N
+		var y := int(index / N)
+		exterior_image.set_pixel(x, y, Color.WHITE)
+		for offset in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+			var next: Vector2i = Vector2i(x, y) + offset
+			if next.x < 0 or next.y < 0 or next.x >= N or next.y >= N: continue
+			var ni: int = next.y * N + next.x
+			if open[ni] == 1:
+				open[ni] = 2
+				queue.append(ni)
+	exterior_texture = ImageTexture.create_from_image(exterior_image)
+	tree_frames = preload("res://scripts/seasonal_tree_art.gd").build(SHORE_TREE.get_image())
+	for target_season in 4:
+		seasonal_trees.append(tree_frames[target_season][16])
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 20261014
+	for i in 1800:
+		var uv := Vector2(rng.randf_range(-0.3, 1.3), rng.randf_range(-0.3, 1.3))
+		if not _is_exterior_land(uv) or _season_near_water(uv, 0.035) or uv.distance_to(CREEPER_ANCHOR) < 0.15: continue
+		var clear := true
+		for home in house_sites:
+			if uv.distance_to(home) < 0.055: clear = false; break
+		if not clear: continue
+		if i % 3 == 0: summer_flowers.append(uv)
+		snow_sites.append(uv)
+
+func _is_exterior_land(uv: Vector2) -> bool:
+	if exterior_image == null or not _is_land(uv): return false
+	if uv.x < 0.0 or uv.x > 1.0 or uv.y < 0.0 or uv.y > 1.0: return true
+	var pixel := Vector2i((uv.clamp(Vector2.ZERO, Vector2.ONE) * 255).round())
+	return exterior_image.get_pixelv(pixel).r > 0.5
+
+func _season_prop_tint(uv: Vector2) -> Color:
+	if not _is_exterior_land(uv): return Color.WHITE
+	var colors := [Color.WHITE, Color(0.98, 1.04, 0.94), Color(1.40, 1.10, 0.77), Color(1.14, 1.20, 1.20)]
+	return colors[previous_season].lerp(colors[season], _season_blend_at(uv))
+
+func _draw_summer_flower(c: Control, p: Vector2, uv: Vector2) -> void:
+	var index := int(abs(uv.x * 1307 + uv.y * 791))
+	var amount := _flower_amount_at(uv)
+	if amount <= 0.01: return
+	var sway := 0.0 if reduced_motion else sin(elapsed * 1.4 + index) * 0.035
+	c.draw_set_transform(p, sway, Vector2.ONE * maxf(0.08, amount))
+	var color: Color = [Color("f5a3ba"), Color("fff0a6"), Color("cdb0ef"), Color("fdf4e5")][index % 4]
+	color.a = smoothstep(0.0, 0.35, amount)
+	for offset in [Vector2(-5, 0), Vector2(3, -4), Vector2(6, 2)]:
+		var stem: Vector2 = offset
+		c.draw_rect(Rect2(stem, Vector2(2, 5)), Color("547d43"))
+		c.draw_rect(Rect2(stem + Vector2(-2, -3), Vector2(6, 2)), color)
+		c.draw_rect(Rect2(stem + Vector2(0, -5), Vector2(2, 6)), color)
+		c.draw_rect(Rect2(stem + Vector2(0, -3), Vector2(2, 2)), Color("e6b856"))
+	c.draw_set_transform(Vector2.ZERO)
+
+func _creeper_weather_exclusion() -> Rect2:
+	var bounds := creeper_mesh.get_aabb()
+	var rect := Rect2(map_camera.unproject_position(creeper_mesh.to_global(bounds.get_endpoint(0))), Vector2.ZERO)
+	for i in range(1, 8): rect = rect.expand(map_camera.unproject_position(creeper_mesh.to_global(bounds.get_endpoint(i))))
+	return rect.grow(12.0)
+
+func _weather_weight(kind: String, season_index: int) -> float:
+	if kind == "snow": return 1.0 if season_index == 3 else 0.0
+	if kind == "leaf": return 1.0 if season_index == 2 else 0.0
+	return 0.65 if season_index == 0 else (0.30 if season_index == 1 else 0.0)
+
+func _season_particle_specs() -> Array[Dictionary]:
+	var particles: Array[Dictionary] = []
+	if reduced_motion: return particles
+	var exclusion := _creeper_weather_exclusion()
+	# Fixed screen-space seeds cover every aspect ratio without gameplay RNG.
+	for channel in [["snow", 150, 0.11, 0.012], ["leaf", 48, 0.065, 0.024], ["petal", 32, 0.075, 0.018]]:
+		var kind: String = channel[0]
+		if _weather_weight(kind, previous_season) == 0.0 and _weather_weight(kind, season) == 0.0:
+			continue
+		for i in int(channel[1]):
+			var phase := float(i) + (13.0 if kind == "leaf" else (29.0 if kind == "petal" else 0.0))
+			var normalized := Vector2(fposmod(phase * 0.754877 + elapsed * float(channel[3]) + sin(elapsed * 0.65 + phase) * 0.015, 1.10) - 0.05,
+				fposmod(phase * 0.618034 + elapsed * float(channel[2]), 1.20) - 0.10)
+			var point := (normalized * size).round()
+			if not Rect2(Vector2.ZERO, size).grow(8).has_point(point) or exclusion.has_point(point): continue
+			var weight := lerpf(_weather_weight(kind, previous_season), _weather_weight(kind, season), _season_blend_for_y(normalized.y))
+			if kind == "petal" and previous_season in [0, 1] and season in [2, 3] and season_progress < 1.0:
+				weight = maxf(weight, sin(season_progress * PI) * 0.65)
+			if weight < 0.01: continue
+			particles.append({"kind": kind, "point": point, "alpha": weight, "index": i})
+			if particles.size() >= MAX_WEATHER_PARTICLES: return particles
+	return particles
+
+func _draw_season_weather(c: Control) -> void:
+	for particle in _season_particle_specs():
+		var p: Vector2 = particle["point"]
+		var i: int = particle["index"]
+		var alpha: float = particle["alpha"]
+		if particle["kind"] == "snow":
+			var color := Color(0.98, 0.99, 0.97, alpha * 0.80)
+			c.draw_rect(Rect2(p, Vector2(2, 2)), color)
+			if i % 5 == 0:
+				c.draw_rect(Rect2(p + Vector2(-2, 0), Vector2(6, 2)), color)
+				c.draw_rect(Rect2(p + Vector2(0, -2), Vector2(2, 6)), color)
+		else:
+			var color: Color = [Color("d8a775"), Color("eac786"), Color("b98c6a")][i % 3] if particle["kind"] == "leaf" else [Color("efb3c2"), Color("f3dbc1"), Color("ddc6ec")][i % 3]
+			color.a = alpha * 0.70
+			var tilt := roundf(sin(elapsed * 1.5 + i) * 2.0)
+			c.draw_colored_polygon(PackedVector2Array([p + Vector2(-3, 0), p + Vector2(tilt, -2), p + Vector2(3, 1), p + Vector2(-tilt, 3)]), color)
+
+func _season_near_water(uv: Vector2, radius: float) -> bool:
+	for i in 8:
+		if _is_water(uv + Vector2.from_angle(i * TAU / 8.0) * radius): return true
+	return false

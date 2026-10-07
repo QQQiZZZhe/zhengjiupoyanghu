@@ -1,11 +1,20 @@
 extends RefCounted
 ## Shared presentation tokens. No gameplay state is changed here.
-const INK := Color("102f35")
-const PANEL := Color("123b40")
-const EDGE := Color("508078")
-const PAPER := Color("f1e8cc")
-const GOLD := Color("f1c66e")
-const MINT := Color("9dd5bd")
+const INK := Color("303e49")
+const PANEL := Color("44565c")
+const EDGE := Color("91a397")
+const PAPER := Color("f5ecd8")
+const GOLD := Color("edc68a")
+const MINT := Color("c7dcae")
+const MEADOW := Color("b8c66d")
+const SUMMER_MEADOW := Color("a4bd65")
+const AUTUMN_MEADOW := Color("d8ad71")
+const SNOW := Color("edf1e9")
+const WATER_DEEP := Color("526e86")
+const WATER_MID := Color("779ba9")
+const WATER_SHALLOW := Color("acc9ce")
+const SAND := Color("e0c89b")
+const SOIL := Color("baaa86")
 const ART := preload("res://assets/art/conservation-cards.png")
 
 static func box(bg: Color, edge: Color, margin: int = 12) -> StyleBoxFlat:
@@ -15,14 +24,18 @@ static func box(bg: Color, edge: Color, margin: int = 12) -> StyleBoxFlat:
 	s.set_border_width_all(2)
 	s.set_corner_radius_all(5)
 	s.set_content_margin_all(margin)
-	s.shadow_color = Color(0.015, 0.06, 0.07, 0.45)
+	s.shadow_color = Color(0.12, 0.16, 0.20, 0.30)
 	s.shadow_size = 5
 	s.shadow_offset = Vector2(0, 4)
 	return s
 
 static func card_style(selected: bool = false) -> StyleBoxFlat:
-	var s := box(PAPER, GOLD if selected else Color("b5c6a9"), 7)
-	s.shadow_size = 9 if selected else 5
+	var s := box(Color.TRANSPARENT, GOLD, 0)
+	s.set_border_width_all(0)
+	s.set_meta("card_outline", selected)
+	s.set_corner_radius_all(0)
+	# 卡牌投影由独立接收平面绘制，StyleBox 阴影会随卡面一起旋转。
+	s.shadow_size = 0
 	s.shadow_color = Color(0.02, 0.10, 0.11, 0.55)
 	return s
 
@@ -39,8 +52,8 @@ static func illustration(card: Dictionary) -> AtlasTexture:
 	return atlas
 
 static func style_button(b: Button, danger: bool = false, primary: bool = false) -> void:
-	var base := Color("783f3e") if danger else PANEL
-	var accent := Color("f3ab91") if danger else MINT
+	var base := Color("895e59") if danger else PANEL
+	var accent := Color("efb7a1") if danger else MINT
 	if primary:
 		base = GOLD
 		accent = Color("fff0b7")
@@ -48,7 +61,7 @@ static func style_button(b: Button, danger: bool = false, primary: bool = false)
 		var bg := base
 		if state == "hover": bg = base.lightened(0.15)
 		if state == "pressed": bg = base.darkened(0.18)
-		if state == "disabled": bg = Color("263e41")
+		if state == "disabled": bg = Color("526164")
 		var s := box(bg, accent if state == "hover" else base.lightened(0.22), 7)
 		s.shadow_size = 1 if state == "pressed" else 4
 		s.shadow_offset.y = 1 if state == "pressed" else 3

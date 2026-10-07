@@ -35,15 +35,48 @@ func _initialize() -> void:
 		backup = f.get_as_text()
 		f.close()
 
-	# ① 数据源：8 张知识卡，字段齐全，顺序稳定
+	# ① 数据源：40 张知识卡，字段齐全，旧卡顺序稳定
 	var ids: Array = K.all_ids()
-	_check(ids.size() == 8, "知识卡应为 8 张，实际 %d" % ids.size())
+	_check(ids.size() == 40, "知识卡应为 40 张，实际 %d" % ids.size())
+	var legacy := ["plant_kucao", "bird_baihe", "bird_xiaotiane", "bird_dongfang", "mech_water_quality", "mech_fushouluo", "cons_disease", "cons_compensate"]
+	_check(ids.slice(0, 8) == legacy, "原有 8 张知识卡的 id 与顺序不变")
+	var action_ids := {}
+	var tags := {}
+	for action in GS.ACTION_CARDS:
+		action_ids[action["id"]] = true
+		for tag in action.get("tags", []):
+			tags[tag] = true
 	_check(ids.size() == GS.KNOWLEDGE_CARDS.size(), "all_ids 与 KNOWLEDGE_CARDS 数量不一致")
 	_check(K.total_count() == ids.size(), "total_count 不等于 id 数量")
 	var required := ["name", "category", "short", "ecology", "threat", "management", "condition"]
 	for kid in ids:
 		for field in required:
 			_check(GS.KNOWLEDGE_CARDS[kid].has(field), "知识卡 %s 缺字段 %s" % [kid, field])
+		var card: Dictionary = GS.KNOWLEDGE_CARDS[kid]
+		if kid in legacy:
+			continue
+		_check(not str(card.get("source_title", "")).is_empty(), "%s 应有来源标题" % kid)
+		_check(str(card.get("source_url", "")).begins_with("https://"), "%s 应有 HTTPS 来源" % kid)
+		for tag in card.get("tags", []):
+			_check(tags.has(tag), "%s 的标签不存在：%s" % [kid, tag])
+		for action_id in card.get("action_ids", []):
+			_check(action_ids.has(action_id), "%s 的行动不存在：%s" % [kid, action_id])
+			GS.turn = 0
+			GS.used_action_ids = [action_id]
+			_check(GS._knowledge_condition_met(card), "%s 应由行动 %s 触发" % [kid, action_id])
+		GS.used_action_ids = []
+		for season in card.get("seasons", []):
+			var index := ["春", "夏", "秋", "冬"].find(season)
+			_check(index >= 0, "%s 季节应有效" % kid)
+			GS.turn = index + 1
+			_check(GS._knowledge_condition_met(card), "%s 应由季节 %s 触发" % [kid, season])
+	GS.turn = 0
+	GS.used_action_ids = []
+	GS._knowledge_rng.seed = 20261004
+	_check(not GS._knowledge_condition_met({}), "没有条件的卡不应必然触发")
+	GS.turn = 1
+	_check(GS._knowledge_condition_met(GS.KNOWLEDGE_CARDS["geo_poyang"]), "首回合应触发认识鄱阳湖")
+	GS.turn = 0
 	print("① 数据源：%d 张知识卡，字段 %d 项齐全" % [ids.size(), required.size()])
 
 	# ② 全新收集：默认一张都没有
@@ -82,6 +115,17 @@ func _initialize() -> void:
 		K.unlock(str(kid))
 	_check(K.collected_count() == ids.size(), "全收集后应为 %d" % ids.size())
 	print("⑤⑥ 幂等 / 全收集：%d / %d" % [K.collected_count(), K.total_count()])
+	K.reset_all()
+	for kid in legacy:
+		K.unlock(kid)
+	K._load()
+	_check(K.collected_count() == 8, "旧版收藏文件应保持 8 / 40")
+	for kid in legacy:
+		_check(K.is_collected(kid), "旧收藏应保留：%s" % kid)
+	for i in 100:
+		_check(not GS._pick_knowledge(ids, {}) in legacy, "仍有新卡时优先补齐未收藏卡")
+	for kid in ids:
+		K.unlock(kid)
 
 	# ⑦ 回合末随机赠送：把所有 condition 都堵死（六项指标全 100 → 一条都不满足），
 	#    于是剩下的命中只可能来自随机那条线，统计频率就该落在设定概率附近。
@@ -107,6 +151,7 @@ func _initialize() -> void:
 	# ⑧ 条件触发命中时不该再叠一张随机（否则一回合连弹两个弹窗）
 	GS.knowledge_unlocked = []
 	GS.pending_knowledge = []
+	GS.knowledge_last_turn = -99
 	for m in GS.metrics:
 		GS.metrics[m] = 100
 	GS.metrics["water_quality"] = 34      # 只满足 cons_disease 的 condition
@@ -127,10 +172,14 @@ func _initialize() -> void:
 		"条件命中时应正好出一张，实际 %d 张" % GS.pending_knowledge.size())
 	var first_pick: String = str(GS.pending_knowledge[0]) if GS.pending_knowledge.size() > 0 else ""
 	GS.pending_knowledge = []
+	GS.turn += 1
 	GS._check_knowledge_triggers()          # 紧接着的下一回合：必须安静
 	_check(GS.pending_knowledge.is_empty(),
 		"出过卡的下一回合必须安静，实际又出了 %s" % str(GS.pending_knowledge))
 	print("⑨ 节拍：出了「%s」之后，下一回合不再出" % first_pick)
+	GS.turn += 1
+	GS._check_knowledge_triggers()
+	_check(GS.pending_knowledge.size() == 1, "间隔一回合后应可以再次触发知识卡")
 
 	# ⑩ 标签加权：命中标签的卡权重要更高
 	var pool: Array = GS.KNOWLEDGE_CARDS.keys()

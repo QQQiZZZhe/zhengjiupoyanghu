@@ -1,0 +1,4282 @@
+{
+	"difficulty_inset": [
+		0,
+		0,
+		2,
+		3
+	],
+	"first_seed": 72000,
+	"games_per_group": 100,
+	"groups": [
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 61.8,
+			"avg_turns": 16.0,
+			"avg_water_actions": 0.0,
+			"avg_water_loss_per_game": 24.42,
+			"avg_water_loss_per_turn": 1.53,
+			"difficulty": 0,
+			"games": 100,
+			"high_turns_pct": 36.5,
+			"loss_by_metric": {
+				"birds": 669,
+				"fish": 322,
+				"vegetation": 1236,
+				"water_quality": 215
+			},
+			"low_turns_pct": 25.3,
+			"policy": "quiet_water_cycle",
+			"samples": [
+				[
+					{
+						"actions": [],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 59,
+						"failure": "",
+						"final_water": 59,
+						"season": "summer",
+						"start": 51,
+						"turn": 2,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 50,
+						"failure": "",
+						"final_water": 50,
+						"season": "autumn",
+						"start": 59,
+						"turn": 3,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "winter",
+						"start": 50,
+						"turn": 4,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 47,
+						"failure": "",
+						"final_water": 47,
+						"season": "spring",
+						"start": 44,
+						"turn": 5,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "summer",
+						"start": 47,
+						"turn": 6,
+						"water_loss": 8
+					},
+					{
+						"actions": [],
+						"after_nature": 46,
+						"failure": "",
+						"final_water": 46,
+						"season": "autumn",
+						"start": 51,
+						"turn": 7,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 39,
+						"failure": "",
+						"final_water": 39,
+						"season": "winter",
+						"start": 46,
+						"turn": 8,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "spring",
+						"start": 39,
+						"turn": 9,
+						"water_loss": 5
+					},
+					{
+						"actions": [],
+						"after_nature": 47,
+						"failure": "",
+						"final_water": 47,
+						"season": "summer",
+						"start": 42,
+						"turn": 10,
+						"water_loss": 11
+					},
+					{
+						"actions": [],
+						"after_nature": 40,
+						"failure": "",
+						"final_water": 40,
+						"season": "autumn",
+						"start": 47,
+						"turn": 11,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 34,
+						"failure": "",
+						"final_water": 34,
+						"season": "winter",
+						"start": 40,
+						"turn": 12,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 38,
+						"failure": "",
+						"final_water": 38,
+						"season": "spring",
+						"start": 34,
+						"turn": 13,
+						"water_loss": 5
+					},
+					{
+						"actions": [],
+						"after_nature": 46,
+						"failure": "",
+						"final_water": 46,
+						"season": "summer",
+						"start": 38,
+						"turn": 14,
+						"water_loss": 13
+					},
+					{
+						"actions": [],
+						"after_nature": 40,
+						"failure": "",
+						"final_water": 40,
+						"season": "autumn",
+						"start": 46,
+						"turn": 15,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 35,
+						"failure": "",
+						"final_water": 35,
+						"season": "winter",
+						"start": 40,
+						"turn": 16,
+						"water_loss": 1
+					}
+				],
+				[
+					{
+						"actions": [],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "spring",
+						"start": 50,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "summer",
+						"start": 54,
+						"turn": 2,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "autumn",
+						"start": 62,
+						"turn": 3,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "winter",
+						"start": 56,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "spring",
+						"start": 51,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 64,
+						"failure": "",
+						"final_water": 64,
+						"season": "summer",
+						"start": 58,
+						"turn": 6,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "autumn",
+						"start": 64,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "winter",
+						"start": 58,
+						"turn": 8,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 61,
+						"failure": "",
+						"final_water": 61,
+						"season": "spring",
+						"start": 55,
+						"turn": 9,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 69,
+						"failure": "",
+						"final_water": 69,
+						"season": "summer",
+						"start": 61,
+						"turn": 10,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 61,
+						"failure": "",
+						"final_water": 61,
+						"season": "autumn",
+						"start": 69,
+						"turn": 11,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "winter",
+						"start": 61,
+						"turn": 12,
+						"water_loss": 5
+					},
+					{
+						"actions": [],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "spring",
+						"start": 56,
+						"turn": 13,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 68,
+						"failure": "",
+						"final_water": 68,
+						"season": "summer",
+						"start": 60,
+						"turn": 14,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 64,
+						"failure": "",
+						"final_water": 64,
+						"season": "autumn",
+						"start": 68,
+						"turn": 15,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 59,
+						"failure": "",
+						"final_water": 59,
+						"season": "winter",
+						"start": 64,
+						"turn": 16,
+						"water_loss": 5
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 235,
+					"loss": 412,
+					"turns": 400
+				},
+				"spring": {
+					"affected": 117,
+					"loss": 173,
+					"turns": 400
+				},
+				"summer": {
+					"affected": 306,
+					"loss": 876,
+					"turns": 400
+				},
+				"winter": {
+					"affected": 331,
+					"loss": 981,
+					"turns": 400
+				}
+			},
+			"survival_pct": 100.0,
+			"turns": 1600
+		},
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 72.3,
+			"avg_turns": 16.0,
+			"avg_water_actions": 0.0,
+			"avg_water_loss_per_game": 57.84,
+			"avg_water_loss_per_turn": 3.62,
+			"difficulty": 0,
+			"games": 100,
+			"high_turns_pct": 45.0,
+			"loss_by_metric": {
+				"birds": 1716,
+				"community": 94,
+				"fish": 710,
+				"vegetation": 2771,
+				"water_quality": 493
+			},
+			"low_turns_pct": 27.3,
+			"policy": "ecology_only",
+			"samples": [
+				[
+					{
+						"actions": [
+							"fish_restock:deep",
+							"smart_patrol:deep"
+						],
+						"after_nature": 50,
+						"failure": "",
+						"final_water": 50,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"fish_market:deep"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "summer",
+						"start": 50,
+						"turn": 2,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"bird_friendly:deep",
+							"rescue:basic"
+						],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "autumn",
+						"start": 58,
+						"turn": 3,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"lake_chief:deep",
+							"guard_team:effective"
+						],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "winter",
+						"start": 49,
+						"turn": 4,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"eco_brand:deep",
+							"patrol:basic"
+						],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "spring",
+						"start": 42,
+						"turn": 5,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"eco_resettle:deep",
+							"nonpoint_intercept:basic"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "summer",
+						"start": 44,
+						"turn": 6,
+						"water_loss": 8
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"rescue:deep",
+							"fish_market:basic"
+						],
+						"after_nature": 43,
+						"failure": "",
+						"final_water": 43,
+						"season": "autumn",
+						"start": 52,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"bird_friendly:basic"
+						],
+						"after_nature": 38,
+						"failure": "",
+						"final_water": 38,
+						"season": "winter",
+						"start": 43,
+						"turn": 8,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_jobs:deep",
+							"research:deep",
+							"bird_friendly:basic"
+						],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "spring",
+						"start": 38,
+						"turn": 9,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"eco_resettle:deep",
+							"fisher_retrain:basic"
+						],
+						"after_nature": 50,
+						"failure": "",
+						"final_water": 36,
+						"season": "summer",
+						"start": 42,
+						"turn": 10,
+						"water_loss": 10
+					},
+					{
+						"actions": [
+							"patrol:deep",
+							"education:effective"
+						],
+						"after_nature": 28,
+						"failure": "",
+						"final_water": 28,
+						"season": "autumn",
+						"start": 36,
+						"turn": 11,
+						"water_loss": 6
+					},
+					{
+						"actions": [
+							"eco_brand:deep",
+							"dredge:deep",
+							"guard_team:basic",
+							"industry_switch:basic"
+						],
+						"after_nature": 24,
+						"failure": "",
+						"final_water": 24,
+						"season": "winter",
+						"start": 28,
+						"turn": 12,
+						"water_loss": 6
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"research:basic",
+							"smart_patrol:effective",
+							"wetland_law:effective"
+						],
+						"after_nature": 31,
+						"failure": "",
+						"final_water": 31,
+						"season": "spring",
+						"start": 24,
+						"turn": 13,
+						"water_loss": 10
+					},
+					{
+						"actions": [
+							"water_monitor:basic",
+							"industry_switch:deep",
+							"sand_mining:effective"
+						],
+						"after_nature": 37,
+						"failure": "",
+						"final_water": 37,
+						"season": "summer",
+						"start": 31,
+						"turn": 14,
+						"water_loss": 19
+					},
+					{
+						"actions": [
+							"smart_patrol:deep",
+							"eco_brand:deep"
+						],
+						"after_nature": 32,
+						"failure": "",
+						"final_water": 32,
+						"season": "autumn",
+						"start": 37,
+						"turn": 15,
+						"water_loss": 6
+					},
+					{
+						"actions": [
+							"guard_team:effective",
+							"eco_brand:deep"
+						],
+						"after_nature": 28,
+						"failure": "",
+						"final_water": 28,
+						"season": "winter",
+						"start": 32,
+						"turn": 16,
+						"water_loss": 4
+					}
+				],
+				[
+					{
+						"actions": [
+							"fish_restock:deep",
+							"guard_team:deep",
+							"water_monitor:basic"
+						],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "spring",
+						"start": 50,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_resettle:deep",
+							"nonpoint_intercept:basic"
+						],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "summer",
+						"start": 53,
+						"turn": 2,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"eco_resettle:deep",
+							"community_comp:basic"
+						],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "autumn",
+						"start": 62,
+						"turn": 3,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"bird_friendly:deep"
+						],
+						"after_nature": 50,
+						"failure": "",
+						"final_water": 50,
+						"season": "winter",
+						"start": 54,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"bird_friendly:deep",
+							"water_monitor:deep"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "spring",
+						"start": 50,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"fish_market:deep",
+							"industry_switch:effective"
+						],
+						"after_nature": 64,
+						"failure": "",
+						"final_water": 64,
+						"season": "summer",
+						"start": 55,
+						"turn": 6,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"smart_patrol:deep",
+							"education:deep",
+							"research:effective"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "autumn",
+						"start": 64,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"fish_market:basic",
+							"sewage_comanage:effective",
+							"lake_chief:effective"
+						],
+						"after_nature": 57,
+						"failure": "",
+						"final_water": 57,
+						"season": "winter",
+						"start": 60,
+						"turn": 8,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"research:effective",
+							"wetland_law:effective",
+							"veg_restore:effective",
+							"education:basic"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "spring",
+						"start": 57,
+						"turn": 9,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"fish_market:basic",
+							"eco_jobs:basic",
+							"wetland_law:effective"
+						],
+						"after_nature": 65,
+						"failure": "",
+						"final_water": 65,
+						"season": "summer",
+						"start": 60,
+						"turn": 10,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:basic",
+							"fish_market:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "autumn",
+						"start": 65,
+						"turn": 11,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"wetland_law:basic",
+							"fisher_retrain:effective"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "winter",
+						"start": 58,
+						"turn": 12,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"smart_patrol:effective",
+							"rescue:effective",
+							"sewage_comanage:basic",
+							"floating_island:basic"
+						],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "spring",
+						"start": 55,
+						"turn": 13,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_brand:basic",
+							"bird_friendly:effective"
+						],
+						"after_nature": 72,
+						"failure": "",
+						"final_water": 72,
+						"season": "summer",
+						"start": 62,
+						"turn": 14,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"sewage_comanage:basic",
+							"eco_brand:effective",
+							"wetland_law:basic",
+							"guard_team:effective"
+						],
+						"after_nature": 69,
+						"failure": "",
+						"final_water": 69,
+						"season": "autumn",
+						"start": 72,
+						"turn": 15,
+						"water_loss": 4
+					},
+					{
+						"actions": [
+							"research:basic",
+							"smart_patrol:effective",
+							"lake_chief:deep",
+							"ecotourism:effective"
+						],
+						"after_nature": 64,
+						"failure": "",
+						"final_water": 64,
+						"season": "winter",
+						"start": 69,
+						"turn": 16,
+						"water_loss": 8
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 277,
+					"loss": 1375,
+					"turns": 400
+				},
+				"spring": {
+					"affected": 149,
+					"loss": 717,
+					"turns": 400
+				},
+				"summer": {
+					"affected": 364,
+					"loss": 1583,
+					"turns": 400
+				},
+				"winter": {
+					"affected": 366,
+					"loss": 2109,
+					"turns": 400
+				}
+			},
+			"survival_pct": 100.0,
+			"turns": 1600
+		},
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 61.3,
+			"avg_turns": 16.0,
+			"avg_water_actions": 2.84,
+			"avg_water_loss_per_game": 25.11,
+			"avg_water_loss_per_turn": 1.57,
+			"difficulty": 0,
+			"games": 100,
+			"high_turns_pct": 39.7,
+			"loss_by_metric": {
+				"birds": 733,
+				"community": 22,
+				"fish": 257,
+				"vegetation": 1326,
+				"water_quality": 173
+			},
+			"low_turns_pct": 21.6,
+			"policy": "water_aware",
+			"samples": [
+				[
+					{
+						"actions": [
+							"fish_restock:deep",
+							"smart_patrol:deep"
+						],
+						"after_nature": 50,
+						"failure": "",
+						"final_water": 50,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"fish_market:deep"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "summer",
+						"start": 50,
+						"turn": 2,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"bird_friendly:deep",
+							"rescue:basic"
+						],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "autumn",
+						"start": 58,
+						"turn": 3,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"lake_chief:deep",
+							"guard_team:effective"
+						],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "winter",
+						"start": 49,
+						"turn": 4,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"water_comanage:effective",
+							"spawning_ground:basic"
+						],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "spring",
+						"start": 42,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"nonpoint_intercept:deep",
+							"eco_resettle:basic",
+							"industry_switch:basic"
+						],
+						"after_nature": 61,
+						"failure": "",
+						"final_water": 61,
+						"season": "summer",
+						"start": 53,
+						"turn": 6,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"fisher_retrain:basic",
+							"rescue:deep",
+							"research:deep"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "autumn",
+						"start": 61,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"bird_friendly:effective"
+						],
+						"after_nature": 47,
+						"failure": "",
+						"final_water": 47,
+						"season": "winter",
+						"start": 52,
+						"turn": 8,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"smart_patrol:deep",
+							"eco_jobs:deep",
+							"bird_friendly:basic"
+						],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "spring",
+						"start": 47,
+						"turn": 9,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"algae_response:deep",
+							"eco_jobs:basic"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 51,
+						"turn": 10,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"guard_team:effective",
+							"industry_switch:effective"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "autumn",
+						"start": 60,
+						"turn": 11,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_brand:deep",
+							"dredge:basic",
+							"smart_patrol:deep",
+							"education:effective"
+						],
+						"after_nature": 48,
+						"failure": "",
+						"final_water": 48,
+						"season": "winter",
+						"start": 52,
+						"turn": 12,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"eco_resettle:deep",
+							"guard_team:effective",
+							"smart_patrol:basic"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "spring",
+						"start": 48,
+						"turn": 13,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_brand:deep"
+						],
+						"after_nature": 61,
+						"failure": "",
+						"final_water": 61,
+						"season": "summer",
+						"start": 55,
+						"turn": 14,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"smart_patrol:effective",
+							"eco_brand:deep"
+						],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "autumn",
+						"start": 61,
+						"turn": 15,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"industry_switch:effective",
+							"fisher_retrain:effective"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "winter",
+						"start": 56,
+						"turn": 16,
+						"water_loss": 2
+					}
+				],
+				[
+					{
+						"actions": [
+							"fish_restock:deep",
+							"guard_team:deep",
+							"water_monitor:basic"
+						],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "spring",
+						"start": 50,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_resettle:deep",
+							"nonpoint_intercept:basic"
+						],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "summer",
+						"start": 53,
+						"turn": 2,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"eco_resettle:deep",
+							"community_comp:basic"
+						],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "autumn",
+						"start": 62,
+						"turn": 3,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"bird_friendly:deep"
+						],
+						"after_nature": 50,
+						"failure": "",
+						"final_water": 50,
+						"season": "winter",
+						"start": 54,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"bird_friendly:deep",
+							"water_monitor:deep"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "spring",
+						"start": 50,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"fish_market:deep",
+							"industry_switch:effective"
+						],
+						"after_nature": 64,
+						"failure": "",
+						"final_water": 64,
+						"season": "summer",
+						"start": 55,
+						"turn": 6,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"smart_patrol:deep",
+							"education:deep",
+							"research:effective"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "autumn",
+						"start": 64,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"fish_market:basic",
+							"sewage_comanage:effective",
+							"lake_chief:effective"
+						],
+						"after_nature": 57,
+						"failure": "",
+						"final_water": 57,
+						"season": "winter",
+						"start": 60,
+						"turn": 8,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"research:effective",
+							"wetland_law:effective",
+							"veg_restore:effective",
+							"education:basic"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "spring",
+						"start": 57,
+						"turn": 9,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"fish_market:basic",
+							"eco_jobs:basic",
+							"wetland_law:effective"
+						],
+						"after_nature": 65,
+						"failure": "",
+						"final_water": 65,
+						"season": "summer",
+						"start": 60,
+						"turn": 10,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:basic",
+							"fish_market:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "autumn",
+						"start": 65,
+						"turn": 11,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"wetland_law:basic",
+							"fisher_retrain:effective"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "winter",
+						"start": 58,
+						"turn": 12,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"smart_patrol:effective",
+							"rescue:effective",
+							"sewage_comanage:basic",
+							"floating_island:basic"
+						],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "spring",
+						"start": 55,
+						"turn": 13,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"flood_release:basic",
+							"eco_brand:basic",
+							"bird_friendly:effective"
+						],
+						"after_nature": 66,
+						"failure": "",
+						"final_water": 66,
+						"season": "summer",
+						"start": 62,
+						"turn": 14,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"flood_release:basic",
+							"sewage_comanage:effective",
+							"wetland_law:basic",
+							"guard_team:effective"
+						],
+						"after_nature": 57,
+						"failure": "",
+						"final_water": 57,
+						"season": "autumn",
+						"start": 66,
+						"turn": 15,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"research:basic",
+							"smart_patrol:effective",
+							"flood_release:basic",
+							"lake_chief:effective"
+						],
+						"after_nature": 46,
+						"failure": "",
+						"final_water": 46,
+						"season": "winter",
+						"start": 57,
+						"turn": 16,
+						"water_loss": 1
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 228,
+					"loss": 544,
+					"turns": 400
+				},
+				"spring": {
+					"affected": 100,
+					"loss": 206,
+					"turns": 400
+				},
+				"summer": {
+					"affected": 312,
+					"loss": 762,
+					"turns": 400
+				},
+				"winter": {
+					"affected": 340,
+					"loss": 999,
+					"turns": 400
+				}
+			},
+			"survival_pct": 100.0,
+			"turns": 1600
+		},
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 60.7,
+			"avg_turns": 16.0,
+			"avg_water_actions": 0.0,
+			"avg_water_loss_per_game": 33.94,
+			"avg_water_loss_per_turn": 2.12,
+			"difficulty": 1,
+			"games": 100,
+			"high_turns_pct": 32.3,
+			"loss_by_metric": {
+				"birds": 835,
+				"community": 1,
+				"fish": 634,
+				"vegetation": 1535,
+				"water_quality": 389
+			},
+			"low_turns_pct": 28.4,
+			"policy": "quiet_water_cycle",
+			"samples": [
+				[
+					{
+						"actions": [],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 59,
+						"failure": "",
+						"final_water": 59,
+						"season": "summer",
+						"start": 51,
+						"turn": 2,
+						"water_loss": 5
+					},
+					{
+						"actions": [],
+						"after_nature": 50,
+						"failure": "",
+						"final_water": 50,
+						"season": "autumn",
+						"start": 59,
+						"turn": 3,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "winter",
+						"start": 50,
+						"turn": 4,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 47,
+						"failure": "",
+						"final_water": 47,
+						"season": "spring",
+						"start": 44,
+						"turn": 5,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "summer",
+						"start": 47,
+						"turn": 6,
+						"water_loss": 11
+					},
+					{
+						"actions": [],
+						"after_nature": 46,
+						"failure": "",
+						"final_water": 46,
+						"season": "autumn",
+						"start": 51,
+						"turn": 7,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 39,
+						"failure": "",
+						"final_water": 39,
+						"season": "winter",
+						"start": 46,
+						"turn": 8,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "spring",
+						"start": 39,
+						"turn": 9,
+						"water_loss": 5
+					},
+					{
+						"actions": [],
+						"after_nature": 47,
+						"failure": "",
+						"final_water": 47,
+						"season": "summer",
+						"start": 42,
+						"turn": 10,
+						"water_loss": 16
+					},
+					{
+						"actions": [],
+						"after_nature": 40,
+						"failure": "",
+						"final_water": 40,
+						"season": "autumn",
+						"start": 47,
+						"turn": 11,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 34,
+						"failure": "",
+						"final_water": 34,
+						"season": "winter",
+						"start": 40,
+						"turn": 12,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 38,
+						"failure": "",
+						"final_water": 38,
+						"season": "spring",
+						"start": 34,
+						"turn": 13,
+						"water_loss": 10
+					},
+					{
+						"actions": [],
+						"after_nature": 46,
+						"failure": "",
+						"final_water": 46,
+						"season": "summer",
+						"start": 38,
+						"turn": 14,
+						"water_loss": 19
+					},
+					{
+						"actions": [],
+						"after_nature": 40,
+						"failure": "",
+						"final_water": 40,
+						"season": "autumn",
+						"start": 46,
+						"turn": 15,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 35,
+						"failure": "",
+						"final_water": 35,
+						"season": "winter",
+						"start": 40,
+						"turn": 16,
+						"water_loss": 1
+					}
+				],
+				[
+					{
+						"actions": [],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 52,
+						"turn": 2,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "winter",
+						"start": 54,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "spring",
+						"start": 49,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "summer",
+						"start": 56,
+						"turn": 6,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "autumn",
+						"start": 62,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "winter",
+						"start": 56,
+						"turn": 8,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 59,
+						"failure": "",
+						"final_water": 59,
+						"season": "spring",
+						"start": 53,
+						"turn": 9,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 67,
+						"failure": "",
+						"final_water": 67,
+						"season": "summer",
+						"start": 59,
+						"turn": 10,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 59,
+						"failure": "",
+						"final_water": 59,
+						"season": "autumn",
+						"start": 67,
+						"turn": 11,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "winter",
+						"start": 59,
+						"turn": 12,
+						"water_loss": 5
+					},
+					{
+						"actions": [],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "spring",
+						"start": 54,
+						"turn": 13,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 66,
+						"failure": "",
+						"final_water": 66,
+						"season": "summer",
+						"start": 58,
+						"turn": 14,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "autumn",
+						"start": 66,
+						"turn": 15,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 57,
+						"failure": "",
+						"final_water": 57,
+						"season": "winter",
+						"start": 62,
+						"turn": 16,
+						"water_loss": 7
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 204,
+					"loss": 429,
+					"turns": 400
+				},
+				"spring": {
+					"affected": 132,
+					"loss": 269,
+					"turns": 400
+				},
+				"summer": {
+					"affected": 329,
+					"loss": 1503,
+					"turns": 400
+				},
+				"winter": {
+					"affected": 306,
+					"loss": 1193,
+					"turns": 400
+				}
+			},
+			"survival_pct": 100.0,
+			"turns": 1600
+		},
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 69.9,
+			"avg_turns": 15.69,
+			"avg_water_actions": 0.0,
+			"avg_water_loss_per_game": 73.92,
+			"avg_water_loss_per_turn": 4.71,
+			"difficulty": 1,
+			"games": 100,
+			"high_turns_pct": 38.4,
+			"loss_by_metric": {
+				"birds": 2017,
+				"community": 99,
+				"fish": 1159,
+				"vegetation": 3325,
+				"water_quality": 792
+			},
+			"low_turns_pct": 31.4,
+			"policy": "ecology_only",
+			"samples": [
+				[
+					{
+						"actions": [
+							"guard_team:deep",
+							"fish_restock:effective"
+						],
+						"after_nature": 50,
+						"failure": "",
+						"final_water": 50,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"fish_market:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "summer",
+						"start": 50,
+						"turn": 2,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"damage_insurance:deep",
+							"rescue:effective"
+						],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "autumn",
+						"start": 58,
+						"turn": 3,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_resettle:deep",
+							"guard_team:basic"
+						],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "winter",
+						"start": 49,
+						"turn": 4,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"smart_patrol:deep",
+							"guard_team:deep"
+						],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "spring",
+						"start": 42,
+						"turn": 5,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"bird_friendly:deep",
+							"education:basic"
+						],
+						"after_nature": 48,
+						"failure": "",
+						"final_water": 34,
+						"season": "summer",
+						"start": 44,
+						"turn": 6,
+						"water_loss": 14
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"rescue:deep",
+							"wetland_law:basic"
+						],
+						"after_nature": 25,
+						"failure": "",
+						"final_water": 25,
+						"season": "autumn",
+						"start": 34,
+						"turn": 7,
+						"water_loss": 12
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"fish_market:effective"
+						],
+						"after_nature": 21,
+						"failure": "",
+						"final_water": 21,
+						"season": "winter",
+						"start": 25,
+						"turn": 8,
+						"water_loss": 12
+					},
+					{
+						"actions": [
+							"spawning_ground:deep",
+							"guard_team:basic"
+						],
+						"after_nature": 25,
+						"failure": "",
+						"final_water": 25,
+						"season": "spring",
+						"start": 21,
+						"turn": 9,
+						"water_loss": 20
+					},
+					{
+						"actions": [
+							"eco_resettle:deep"
+						],
+						"after_nature": 33,
+						"failure": "",
+						"final_water": 33,
+						"season": "summer",
+						"start": 25,
+						"turn": 10,
+						"water_loss": 32
+					},
+					{
+						"actions": [
+							"grazing_ban:deep",
+							"wetland_restore:effective",
+							"rescue:deep"
+						],
+						"after_nature": 27,
+						"failure": "vegetation",
+						"final_water": 27,
+						"season": "autumn",
+						"start": 33,
+						"turn": 11,
+						"water_loss": 12
+					}
+				],
+				[
+					{
+						"actions": [
+							"guard_team:deep",
+							"fish_restock:effective"
+						],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"rescue:deep"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 53,
+						"turn": 2,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"fisher_retrain:basic",
+							"grazing_ban:effective"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"bird_friendly:deep"
+						],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "winter",
+						"start": 55,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"sewage_comanage:effective",
+							"fish_restock:effective",
+							"smart_patrol:basic"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "spring",
+						"start": 49,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"nonpoint_intercept:deep"
+						],
+						"after_nature": 63,
+						"failure": "",
+						"final_water": 63,
+						"season": "summer",
+						"start": 55,
+						"turn": 6,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"rescue:deep",
+							"industry_switch:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "autumn",
+						"start": 63,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"smart_patrol:deep",
+							"fisher_retrain:basic",
+							"fishway:basic"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "winter",
+						"start": 58,
+						"turn": 8,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"fish_restock:deep",
+							"sewage_comanage:effective",
+							"eco_jobs:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "spring",
+						"start": 55,
+						"turn": 9,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"nonpoint_intercept:basic",
+							"sewage_comanage:basic"
+						],
+						"after_nature": 67,
+						"failure": "",
+						"final_water": 67,
+						"season": "summer",
+						"start": 58,
+						"turn": 10,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"habitat_protect:deep",
+							"eco_jobs:effective"
+						],
+						"after_nature": 61,
+						"failure": "",
+						"final_water": 61,
+						"season": "autumn",
+						"start": 67,
+						"turn": 11,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"fish_market:effective",
+							"ecotourism:effective"
+						],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "winter",
+						"start": 61,
+						"turn": 12,
+						"water_loss": 7
+					},
+					{
+						"actions": [
+							"submerged_planting:deep",
+							"eco_jobs:basic"
+						],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 80,
+						"season": "spring",
+						"start": 56,
+						"turn": 13,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"sand_mining:deep",
+							"community_comp:basic"
+						],
+						"after_nature": 90,
+						"failure": "",
+						"final_water": 90,
+						"season": "summer",
+						"start": 80,
+						"turn": 14,
+						"water_loss": 9
+					},
+					{
+						"actions": [
+							"education:effective",
+							"rescue:effective",
+							"wetland_law:basic"
+						],
+						"after_nature": 83,
+						"failure": "",
+						"final_water": 83,
+						"season": "autumn",
+						"start": 90,
+						"turn": 15,
+						"water_loss": 16
+					},
+					{
+						"actions": [
+							"rescue:deep",
+							"water_monitor:effective",
+							"fish_market:basic"
+						],
+						"after_nature": 78,
+						"failure": "",
+						"final_water": 78,
+						"season": "winter",
+						"start": 83,
+						"turn": 16,
+						"water_loss": 22
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 236,
+					"loss": 1556,
+					"turns": 392
+				},
+				"spring": {
+					"affected": 144,
+					"loss": 884,
+					"turns": 394
+				},
+				"summer": {
+					"affected": 374,
+					"loss": 2423,
+					"turns": 393
+				},
+				"winter": {
+					"affected": 342,
+					"loss": 2529,
+					"turns": 390
+				}
+			},
+			"survival_pct": 93.0,
+			"turns": 1569
+		},
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 60.5,
+			"avg_turns": 15.81,
+			"avg_water_actions": 1.75,
+			"avg_water_loss_per_game": 33.66,
+			"avg_water_loss_per_turn": 2.13,
+			"difficulty": 1,
+			"games": 100,
+			"high_turns_pct": 35.4,
+			"loss_by_metric": {
+				"birds": 938,
+				"community": 23,
+				"fish": 489,
+				"vegetation": 1572,
+				"water_quality": 344
+			},
+			"low_turns_pct": 25.0,
+			"policy": "water_aware",
+			"samples": [
+				[
+					{
+						"actions": [
+							"guard_team:deep",
+							"fish_restock:effective"
+						],
+						"after_nature": 50,
+						"failure": "",
+						"final_water": 50,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"fish_market:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "summer",
+						"start": 50,
+						"turn": 2,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"damage_insurance:deep",
+							"rescue:effective"
+						],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "autumn",
+						"start": 58,
+						"turn": 3,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_resettle:deep",
+							"guard_team:basic"
+						],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "winter",
+						"start": 49,
+						"turn": 4,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"smart_patrol:deep",
+							"guard_team:deep"
+						],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "spring",
+						"start": 42,
+						"turn": 5,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"bird_friendly:deep",
+							"education:basic"
+						],
+						"after_nature": 48,
+						"failure": "",
+						"final_water": 34,
+						"season": "summer",
+						"start": 44,
+						"turn": 6,
+						"water_loss": 14
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"rescue:deep",
+							"wetland_law:basic"
+						],
+						"after_nature": 25,
+						"failure": "",
+						"final_water": 25,
+						"season": "autumn",
+						"start": 34,
+						"turn": 7,
+						"water_loss": 12
+					},
+					{
+						"actions": [
+							"water_control:deep",
+							"water_monitor:basic"
+						],
+						"after_nature": 39,
+						"failure": "",
+						"final_water": 39,
+						"season": "winter",
+						"start": 25,
+						"turn": 8,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"spawning_ground:deep"
+						],
+						"after_nature": 43,
+						"failure": "",
+						"final_water": 43,
+						"season": "spring",
+						"start": 39,
+						"turn": 9,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"sand_mining:deep"
+						],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "summer",
+						"start": 43,
+						"turn": 10,
+						"water_loss": 13
+					},
+					{
+						"actions": [
+							"grazing_ban:deep",
+							"industry_switch:deep",
+							"eco_brand:basic"
+						],
+						"after_nature": 45,
+						"failure": "",
+						"final_water": 45,
+						"season": "autumn",
+						"start": 51,
+						"turn": 11,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"smart_patrol:deep",
+							"eco_jobs:effective"
+						],
+						"after_nature": 40,
+						"failure": "",
+						"final_water": 40,
+						"season": "winter",
+						"start": 45,
+						"turn": 12,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"seed_bank:deep",
+							"rescue:deep",
+							"smart_patrol:basic"
+						],
+						"after_nature": 46,
+						"failure": "",
+						"final_water": 46,
+						"season": "spring",
+						"start": 40,
+						"turn": 13,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"nonpoint_intercept:effective"
+						],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "summer",
+						"start": 46,
+						"turn": 14,
+						"water_loss": 10
+					},
+					{
+						"actions": [
+							"eco_brand:deep",
+							"wetland_law:basic"
+						],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "autumn",
+						"start": 54,
+						"turn": 15,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_brand:deep",
+							"guard_team:effective"
+						],
+						"after_nature": 47,
+						"failure": "",
+						"final_water": 47,
+						"season": "winter",
+						"start": 51,
+						"turn": 16,
+						"water_loss": 1
+					}
+				],
+				[
+					{
+						"actions": [
+							"guard_team:deep",
+							"fish_restock:effective"
+						],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"rescue:deep"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 53,
+						"turn": 2,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"fisher_retrain:basic",
+							"grazing_ban:effective"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"bird_friendly:deep"
+						],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "winter",
+						"start": 55,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"sewage_comanage:effective",
+							"fish_restock:effective",
+							"smart_patrol:basic"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "spring",
+						"start": 49,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"nonpoint_intercept:deep"
+						],
+						"after_nature": 63,
+						"failure": "",
+						"final_water": 63,
+						"season": "summer",
+						"start": 55,
+						"turn": 6,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"rescue:deep",
+							"industry_switch:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "autumn",
+						"start": 63,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"smart_patrol:deep",
+							"fisher_retrain:basic",
+							"fishway:basic"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "winter",
+						"start": 58,
+						"turn": 8,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"fish_restock:deep",
+							"sewage_comanage:effective",
+							"eco_jobs:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "spring",
+						"start": 55,
+						"turn": 9,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"nonpoint_intercept:basic",
+							"sewage_comanage:basic"
+						],
+						"after_nature": 67,
+						"failure": "",
+						"final_water": 67,
+						"season": "summer",
+						"start": 58,
+						"turn": 10,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"habitat_protect:deep",
+							"eco_jobs:effective"
+						],
+						"after_nature": 61,
+						"failure": "",
+						"final_water": 61,
+						"season": "autumn",
+						"start": 67,
+						"turn": 11,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"fish_market:effective",
+							"ecotourism:effective"
+						],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "winter",
+						"start": 61,
+						"turn": 12,
+						"water_loss": 7
+					},
+					{
+						"actions": [
+							"submerged_planting:deep",
+							"eco_jobs:basic"
+						],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 80,
+						"season": "spring",
+						"start": 56,
+						"turn": 13,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"sand_mining:deep",
+							"community_comp:basic"
+						],
+						"after_nature": 90,
+						"failure": "",
+						"final_water": 90,
+						"season": "summer",
+						"start": 80,
+						"turn": 14,
+						"water_loss": 9
+					},
+					{
+						"actions": [
+							"education:effective",
+							"rescue:effective",
+							"wetland_law:basic"
+						],
+						"after_nature": 83,
+						"failure": "",
+						"final_water": 83,
+						"season": "autumn",
+						"start": 90,
+						"turn": 15,
+						"water_loss": 16
+					},
+					{
+						"actions": [
+							"rescue:deep",
+							"water_monitor:effective",
+							"fish_market:basic"
+						],
+						"after_nature": 78,
+						"failure": "",
+						"final_water": 78,
+						"season": "winter",
+						"start": 83,
+						"turn": 16,
+						"water_loss": 22
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 195,
+					"loss": 558,
+					"turns": 395
+				},
+				"spring": {
+					"affected": 107,
+					"loss": 267,
+					"turns": 396
+				},
+				"summer": {
+					"affected": 332,
+					"loss": 1267,
+					"turns": 395
+				},
+				"winter": {
+					"affected": 322,
+					"loss": 1274,
+					"turns": 395
+				}
+			},
+			"survival_pct": 98.0,
+			"turns": 1581
+		},
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 78.1,
+			"avg_turns": 16.0,
+			"avg_water_actions": 0.0,
+			"avg_water_loss_per_game": 63.8,
+			"avg_water_loss_per_turn": 3.99,
+			"difficulty": 2,
+			"games": 100,
+			"high_turns_pct": 42.0,
+			"loss_by_metric": {
+				"birds": 1747,
+				"community": 1,
+				"fish": 1172,
+				"vegetation": 2742,
+				"water_quality": 718
+			},
+			"low_turns_pct": 36.1,
+			"policy": "quiet_water_cycle",
+			"samples": [
+				[
+					{
+						"actions": [],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "spring",
+						"start": 50,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 61,
+						"failure": "",
+						"final_water": 61,
+						"season": "summer",
+						"start": 53,
+						"turn": 2,
+						"water_loss": 5
+					},
+					{
+						"actions": [],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "autumn",
+						"start": 61,
+						"turn": 3,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 46,
+						"failure": "",
+						"final_water": 46,
+						"season": "winter",
+						"start": 52,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "spring",
+						"start": 46,
+						"turn": 5,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "summer",
+						"start": 49,
+						"turn": 6,
+						"water_loss": 14
+					},
+					{
+						"actions": [],
+						"after_nature": 48,
+						"failure": "",
+						"final_water": 48,
+						"season": "autumn",
+						"start": 53,
+						"turn": 7,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 41,
+						"failure": "",
+						"final_water": 41,
+						"season": "winter",
+						"start": 48,
+						"turn": 8,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "spring",
+						"start": 41,
+						"turn": 9,
+						"water_loss": 8
+					},
+					{
+						"actions": [],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "summer",
+						"start": 44,
+						"turn": 10,
+						"water_loss": 21
+					},
+					{
+						"actions": [],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "autumn",
+						"start": 49,
+						"turn": 11,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 36,
+						"failure": "",
+						"final_water": 36,
+						"season": "winter",
+						"start": 42,
+						"turn": 12,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 40,
+						"failure": "",
+						"final_water": 40,
+						"season": "spring",
+						"start": 36,
+						"turn": 13,
+						"water_loss": 12
+					},
+					{
+						"actions": [],
+						"after_nature": 48,
+						"failure": "",
+						"final_water": 48,
+						"season": "summer",
+						"start": 40,
+						"turn": 14,
+						"water_loss": 26
+					},
+					{
+						"actions": [],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "autumn",
+						"start": 48,
+						"turn": 15,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 37,
+						"failure": "",
+						"final_water": 37,
+						"season": "winter",
+						"start": 42,
+						"turn": 16,
+						"water_loss": 1
+					}
+				],
+				[
+					{
+						"actions": [],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 52,
+						"turn": 2,
+						"water_loss": 6
+					},
+					{
+						"actions": [],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "winter",
+						"start": 54,
+						"turn": 4,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "spring",
+						"start": 49,
+						"turn": 5,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "summer",
+						"start": 56,
+						"turn": 6,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "autumn",
+						"start": 62,
+						"turn": 7,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "winter",
+						"start": 56,
+						"turn": 8,
+						"water_loss": 7
+					},
+					{
+						"actions": [],
+						"after_nature": 59,
+						"failure": "",
+						"final_water": 59,
+						"season": "spring",
+						"start": 53,
+						"turn": 9,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 67,
+						"failure": "",
+						"final_water": 67,
+						"season": "summer",
+						"start": 59,
+						"turn": 10,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 59,
+						"failure": "",
+						"final_water": 59,
+						"season": "autumn",
+						"start": 67,
+						"turn": 11,
+						"water_loss": 4
+					},
+					{
+						"actions": [],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "winter",
+						"start": 59,
+						"turn": 12,
+						"water_loss": 8
+					},
+					{
+						"actions": [],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "spring",
+						"start": 54,
+						"turn": 13,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 66,
+						"failure": "",
+						"final_water": 66,
+						"season": "summer",
+						"start": 58,
+						"turn": 14,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "autumn",
+						"start": 66,
+						"turn": 15,
+						"water_loss": 4
+					},
+					{
+						"actions": [],
+						"after_nature": 57,
+						"failure": "",
+						"final_water": 57,
+						"season": "winter",
+						"start": 62,
+						"turn": 16,
+						"water_loss": 12
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 276,
+					"loss": 879,
+					"turns": 400
+				},
+				"spring": {
+					"affected": 264,
+					"loss": 626,
+					"turns": 400
+				},
+				"summer": {
+					"affected": 351,
+					"loss": 2604,
+					"turns": 400
+				},
+				"winter": {
+					"affected": 359,
+					"loss": 2271,
+					"turns": 400
+				}
+			},
+			"survival_pct": 100.0,
+			"turns": 1600
+		},
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 84.2,
+			"avg_turns": 8.57,
+			"avg_water_actions": 0.0,
+			"avg_water_loss_per_game": 47.34,
+			"avg_water_loss_per_turn": 5.52,
+			"difficulty": 2,
+			"games": 100,
+			"high_turns_pct": 41.5,
+			"loss_by_metric": {
+				"birds": 1119,
+				"community": 42,
+				"fish": 901,
+				"vegetation": 2111,
+				"water_quality": 561
+			},
+			"low_turns_pct": 42.7,
+			"policy": "ecology_only",
+			"samples": [
+				[
+					{
+						"actions": [
+							"guard_team:deep"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "spring",
+						"start": 50,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:deep"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 52,
+						"turn": 2,
+						"water_loss": 6
+					},
+					{
+						"actions": [
+							"fish_market:effective",
+							"wetland_restore:basic",
+							"rescue:effective"
+						],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"dredge:basic"
+						],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "winter",
+						"start": 51,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"eco_brand:deep"
+						],
+						"after_nature": 46,
+						"failure": "",
+						"final_water": 46,
+						"season": "spring",
+						"start": 44,
+						"turn": 5,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"algae_response:effective",
+							"nonpoint_intercept:basic"
+						],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "summer",
+						"start": 46,
+						"turn": 6,
+						"water_loss": 16
+					},
+					{
+						"actions": [
+							"eco_resettle:basic",
+							"bird_friendly:effective"
+						],
+						"after_nature": 45,
+						"failure": "",
+						"final_water": 45,
+						"season": "autumn",
+						"start": 54,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"eco_resettle:basic",
+							"smart_patrol:deep"
+						],
+						"after_nature": 38,
+						"failure": "",
+						"final_water": 24,
+						"season": "winter",
+						"start": 45,
+						"turn": 8,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"eco_jobs:deep"
+						],
+						"after_nature": 28,
+						"failure": "",
+						"final_water": 28,
+						"season": "spring",
+						"start": 24,
+						"turn": 9,
+						"water_loss": 25
+					},
+					{
+						"actions": [
+							"nonpoint_intercept:effective",
+							"sand_mining:basic"
+						],
+						"after_nature": 36,
+						"failure": "vegetation",
+						"final_water": 36,
+						"season": "summer",
+						"start": 28,
+						"turn": 10,
+						"water_loss": 43
+					}
+				],
+				[
+					{
+						"actions": [
+							"fish_restock:deep",
+							"water_monitor:basic"
+						],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"rescue:effective"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 53,
+						"turn": 2,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"grazing_ban:effective"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"industry_switch:deep"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "winter",
+						"start": 55,
+						"turn": 4,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"floating_island:deep"
+						],
+						"after_nature": 57,
+						"failure": "",
+						"final_water": 57,
+						"season": "spring",
+						"start": 52,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"nonpoint_intercept:effective",
+							"rescue:deep"
+						],
+						"after_nature": 65,
+						"failure": "",
+						"final_water": 65,
+						"season": "summer",
+						"start": 57,
+						"turn": 6,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"industry_switch:basic"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "autumn",
+						"start": 65,
+						"turn": 7,
+						"water_loss": 4
+					},
+					{
+						"actions": [
+							"lake_chief:effective",
+							"bird_friendly:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 76,
+						"season": "winter",
+						"start": 60,
+						"turn": 8,
+						"water_loss": 11
+					},
+					{
+						"actions": [
+							"floating_island:deep"
+						],
+						"after_nature": 79,
+						"failure": "",
+						"final_water": 79,
+						"season": "spring",
+						"start": 76,
+						"turn": 9,
+						"water_loss": 15
+					},
+					{
+						"actions": [
+							"bird_friendly:effective",
+							"nonpoint_intercept:basic"
+						],
+						"after_nature": 88,
+						"failure": "vegetation",
+						"final_water": 88,
+						"season": "summer",
+						"start": 79,
+						"turn": 10,
+						"water_loss": 11
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 159,
+					"loss": 767,
+					"turns": 200
+				},
+				"spring": {
+					"affected": 168,
+					"loss": 713,
+					"turns": 242
+				},
+				"summer": {
+					"affected": 218,
+					"loss": 1884,
+					"turns": 227
+				},
+				"winter": {
+					"affected": 177,
+					"loss": 1370,
+					"turns": 188
+				}
+			},
+			"survival_pct": 10.0,
+			"turns": 857
+		},
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 81.8,
+			"avg_turns": 9.38,
+			"avg_water_actions": 0.93,
+			"avg_water_loss_per_game": 32.29,
+			"avg_water_loss_per_turn": 3.44,
+			"difficulty": 2,
+			"games": 100,
+			"high_turns_pct": 44.3,
+			"loss_by_metric": {
+				"birds": 861,
+				"community": 18,
+				"fish": 540,
+				"vegetation": 1479,
+				"water_quality": 331
+			},
+			"low_turns_pct": 37.4,
+			"policy": "water_aware",
+			"samples": [
+				[
+					{
+						"actions": [
+							"guard_team:deep"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "spring",
+						"start": 50,
+						"turn": 1,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"water_monitor:deep"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 52,
+						"turn": 2,
+						"water_loss": 6
+					},
+					{
+						"actions": [
+							"fish_market:effective",
+							"wetland_restore:basic",
+							"rescue:effective"
+						],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"dredge:basic"
+						],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "winter",
+						"start": 51,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"water_comanage:basic",
+							"guard_team:deep"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "spring",
+						"start": 44,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"algae_response:effective",
+							"nonpoint_intercept:basic"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 52,
+						"turn": 6,
+						"water_loss": 6
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"fisher_retrain:basic"
+						],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "autumn",
+						"start": 60,
+						"turn": 7,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"eco_resettle:basic",
+							"eco_jobs:effective"
+						],
+						"after_nature": 44,
+						"failure": "vegetation",
+						"final_water": 44,
+						"season": "winter",
+						"start": 51,
+						"turn": 8,
+						"water_loss": 2
+					}
+				],
+				[
+					{
+						"actions": [
+							"fish_restock:deep",
+							"water_monitor:basic"
+						],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"water_monitor:deep",
+							"rescue:effective"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 53,
+						"turn": 2,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"grazing_ban:effective"
+						],
+						"after_nature": 55,
+						"failure": "",
+						"final_water": 55,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"industry_switch:deep"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "winter",
+						"start": 55,
+						"turn": 4,
+						"water_loss": 5
+					},
+					{
+						"actions": [
+							"floating_island:deep"
+						],
+						"after_nature": 57,
+						"failure": "",
+						"final_water": 57,
+						"season": "spring",
+						"start": 52,
+						"turn": 5,
+						"water_loss": 0
+					},
+					{
+						"actions": [
+							"nonpoint_intercept:effective",
+							"rescue:deep"
+						],
+						"after_nature": 65,
+						"failure": "",
+						"final_water": 65,
+						"season": "summer",
+						"start": 57,
+						"turn": 6,
+						"water_loss": 3
+					},
+					{
+						"actions": [
+							"guard_team:deep",
+							"industry_switch:basic"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "autumn",
+						"start": 65,
+						"turn": 7,
+						"water_loss": 4
+					},
+					{
+						"actions": [
+							"lake_chief:effective",
+							"bird_friendly:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 76,
+						"season": "winter",
+						"start": 60,
+						"turn": 8,
+						"water_loss": 11
+					},
+					{
+						"actions": [
+							"floating_island:deep"
+						],
+						"after_nature": 79,
+						"failure": "",
+						"final_water": 79,
+						"season": "spring",
+						"start": 76,
+						"turn": 9,
+						"water_loss": 15
+					},
+					{
+						"actions": [
+							"flood_release:effective",
+							"bird_friendly:basic",
+							"water_monitor:basic"
+						],
+						"after_nature": 76,
+						"failure": "",
+						"final_water": 76,
+						"season": "summer",
+						"start": 79,
+						"turn": 10,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"flood_release:effective",
+							"grazing_ban:deep",
+							"habitat_protect:basic"
+						],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "autumn",
+						"start": 76,
+						"turn": 11,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"eco_resettle:basic",
+							"community_comp:effective"
+						],
+						"after_nature": 53,
+						"failure": "vegetation",
+						"final_water": 53,
+						"season": "winter",
+						"start": 58,
+						"turn": 12,
+						"water_loss": 8
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 178,
+					"loss": 493,
+					"turns": 226
+				},
+				"spring": {
+					"affected": 156,
+					"loss": 340,
+					"turns": 254
+				},
+				"summer": {
+					"affected": 226,
+					"loss": 1309,
+					"turns": 242
+				},
+				"winter": {
+					"affected": 207,
+					"loss": 1087,
+					"turns": 216
+				}
+			},
+			"survival_pct": 29.0,
+			"turns": 938
+		},
+		{
+			"affected_games_pct": 100.0,
+			"affected_turns_pct": 85.5,
+			"avg_turns": 16.0,
+			"avg_water_actions": 0.0,
+			"avg_water_loss_per_game": 77.03,
+			"avg_water_loss_per_turn": 4.81,
+			"difficulty": 3,
+			"games": 100,
+			"high_turns_pct": 45.9,
+			"loss_by_metric": {
+				"birds": 2062,
+				"community": 4,
+				"fish": 1483,
+				"vegetation": 3285,
+				"water_quality": 869
+			},
+			"low_turns_pct": 39.6,
+			"policy": "quiet_water_cycle",
+			"samples": [
+				[
+					{
+						"actions": [],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "spring",
+						"start": 50,
+						"turn": 1,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 61,
+						"failure": "",
+						"final_water": 61,
+						"season": "summer",
+						"start": 53,
+						"turn": 2,
+						"water_loss": 6
+					},
+					{
+						"actions": [],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "autumn",
+						"start": 61,
+						"turn": 3,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 46,
+						"failure": "",
+						"final_water": 46,
+						"season": "winter",
+						"start": 52,
+						"turn": 4,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "spring",
+						"start": 46,
+						"turn": 5,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "summer",
+						"start": 49,
+						"turn": 6,
+						"water_loss": 16
+					},
+					{
+						"actions": [],
+						"after_nature": 48,
+						"failure": "",
+						"final_water": 48,
+						"season": "autumn",
+						"start": 53,
+						"turn": 7,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 41,
+						"failure": "",
+						"final_water": 41,
+						"season": "winter",
+						"start": 48,
+						"turn": 8,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "spring",
+						"start": 41,
+						"turn": 9,
+						"water_loss": 8
+					},
+					{
+						"actions": [],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "summer",
+						"start": 44,
+						"turn": 10,
+						"water_loss": 24
+					},
+					{
+						"actions": [],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "autumn",
+						"start": 49,
+						"turn": 11,
+						"water_loss": 4
+					},
+					{
+						"actions": [],
+						"after_nature": 36,
+						"failure": "",
+						"final_water": 36,
+						"season": "winter",
+						"start": 42,
+						"turn": 12,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 40,
+						"failure": "",
+						"final_water": 40,
+						"season": "spring",
+						"start": 36,
+						"turn": 13,
+						"water_loss": 13
+					},
+					{
+						"actions": [],
+						"after_nature": 48,
+						"failure": "",
+						"final_water": 48,
+						"season": "summer",
+						"start": 40,
+						"turn": 14,
+						"water_loss": 27
+					},
+					{
+						"actions": [],
+						"after_nature": 42,
+						"failure": "",
+						"final_water": 42,
+						"season": "autumn",
+						"start": 48,
+						"turn": 15,
+						"water_loss": 4
+					},
+					{
+						"actions": [],
+						"after_nature": 37,
+						"failure": "",
+						"final_water": 37,
+						"season": "winter",
+						"start": 42,
+						"turn": 16,
+						"water_loss": 1
+					}
+				],
+				[
+					{
+						"actions": [],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 52,
+						"turn": 2,
+						"water_loss": 8
+					},
+					{
+						"actions": [],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 49,
+						"failure": "",
+						"final_water": 49,
+						"season": "winter",
+						"start": 54,
+						"turn": 4,
+						"water_loss": 5
+					},
+					{
+						"actions": [],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "spring",
+						"start": 49,
+						"turn": 5,
+						"water_loss": 1
+					},
+					{
+						"actions": [],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "summer",
+						"start": 56,
+						"turn": 6,
+						"water_loss": 5
+					},
+					{
+						"actions": [],
+						"after_nature": 56,
+						"failure": "",
+						"final_water": 56,
+						"season": "autumn",
+						"start": 62,
+						"turn": 7,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 53,
+						"failure": "",
+						"final_water": 53,
+						"season": "winter",
+						"start": 56,
+						"turn": 8,
+						"water_loss": 8
+					},
+					{
+						"actions": [],
+						"after_nature": 59,
+						"failure": "",
+						"final_water": 59,
+						"season": "spring",
+						"start": 53,
+						"turn": 9,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 67,
+						"failure": "",
+						"final_water": 67,
+						"season": "summer",
+						"start": 59,
+						"turn": 10,
+						"water_loss": 2
+					},
+					{
+						"actions": [],
+						"after_nature": 59,
+						"failure": "",
+						"final_water": 59,
+						"season": "autumn",
+						"start": 67,
+						"turn": 11,
+						"water_loss": 4
+					},
+					{
+						"actions": [],
+						"after_nature": 54,
+						"failure": "",
+						"final_water": 54,
+						"season": "winter",
+						"start": 59,
+						"turn": 12,
+						"water_loss": 10
+					},
+					{
+						"actions": [],
+						"after_nature": 58,
+						"failure": "",
+						"final_water": 58,
+						"season": "spring",
+						"start": 54,
+						"turn": 13,
+						"water_loss": 0
+					},
+					{
+						"actions": [],
+						"after_nature": 66,
+						"failure": "",
+						"final_water": 66,
+						"season": "summer",
+						"start": 58,
+						"turn": 14,
+						"water_loss": 3
+					},
+					{
+						"actions": [],
+						"after_nature": 62,
+						"failure": "",
+						"final_water": 62,
+						"season": "autumn",
+						"start": 66,
+						"turn": 15,
+						"water_loss": 6
+					},
+					{
+						"actions": [],
+						"after_nature": 57,
+						"failure": "",
+						"final_water": 57,
+						"season": "winter",
+						"start": 62,
+						"turn": 16,
+						"water_loss": 13
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 319,
+					"loss": 1100,
+					"turns": 400
+				},
+				"spring": {
+					"affected": 302,
+					"loss": 875,
+					"turns": 400
+				},
+				"summer": {
+					"affected": 373,
+					"loss": 3088,
+					"turns": 400
+				},
+				"winter": {
+					"affected": 374,
+					"loss": 2640,
+					"turns": 400
+				}
+			},
+			"survival_pct": 100.0,
+			"turns": 1600
+		},
+		{
+			"affected_games_pct": 95.0,
+			"affected_turns_pct": 92.7,
+			"avg_turns": 3.31,
+			"avg_water_actions": 0.0,
+			"avg_water_loss_per_game": 16.6,
+			"avg_water_loss_per_turn": 5.02,
+			"difficulty": 3,
+			"games": 100,
+			"high_turns_pct": 36.3,
+			"loss_by_metric": {
+				"birds": 380,
+				"community": 14,
+				"fish": 346,
+				"vegetation": 735,
+				"water_quality": 185
+			},
+			"low_turns_pct": 56.5,
+			"policy": "ecology_only",
+			"samples": [
+				[
+					{
+						"actions": [
+							"smart_patrol:deep"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "spring",
+						"start": 50,
+						"turn": 1,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"water_monitor:deep"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 52,
+						"turn": 2,
+						"water_loss": 8
+					},
+					{
+						"actions": [
+							"fish_market:effective",
+							"industry_switch:basic"
+						],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"obstruction_clear:basic",
+							"fish_market:basic",
+							"education:basic"
+						],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "winter",
+						"start": 51,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"seed_bank:effective",
+							"eco_resettle:basic"
+						],
+						"after_nature": 46,
+						"failure": "vegetation",
+						"final_water": 46,
+						"season": "spring",
+						"start": 44,
+						"turn": 5,
+						"water_loss": 5
+					}
+				],
+				[
+					{
+						"actions": [
+							"fish_restock:deep"
+						],
+						"after_nature": 53,
+						"failure": "water_quality",
+						"final_water": 53,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 2
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 60,
+					"loss": 285,
+					"turns": 62
+				},
+				"spring": {
+					"affected": 108,
+					"loss": 255,
+					"turns": 129
+				},
+				"summer": {
+					"affected": 86,
+					"loss": 691,
+					"turns": 86
+				},
+				"winter": {
+					"affected": 53,
+					"loss": 429,
+					"turns": 54
+				}
+			},
+			"survival_pct": 0.0,
+			"turns": 331
+		},
+		{
+			"affected_games_pct": 92.0,
+			"affected_turns_pct": 90.5,
+			"avg_turns": 3.89,
+			"avg_water_actions": 0.42,
+			"avg_water_loss_per_game": 15.5,
+			"avg_water_loss_per_turn": 3.98,
+			"difficulty": 3,
+			"games": 100,
+			"high_turns_pct": 37.8,
+			"loss_by_metric": {
+				"birds": 341,
+				"community": 8,
+				"fish": 339,
+				"vegetation": 680,
+				"water_quality": 182
+			},
+			"low_turns_pct": 52.7,
+			"policy": "water_aware",
+			"samples": [
+				[
+					{
+						"actions": [
+							"smart_patrol:deep"
+						],
+						"after_nature": 52,
+						"failure": "",
+						"final_water": 52,
+						"season": "spring",
+						"start": 50,
+						"turn": 1,
+						"water_loss": 1
+					},
+					{
+						"actions": [
+							"water_monitor:deep"
+						],
+						"after_nature": 60,
+						"failure": "",
+						"final_water": 60,
+						"season": "summer",
+						"start": 52,
+						"turn": 2,
+						"water_loss": 8
+					},
+					{
+						"actions": [
+							"fish_market:effective",
+							"industry_switch:basic"
+						],
+						"after_nature": 51,
+						"failure": "",
+						"final_water": 51,
+						"season": "autumn",
+						"start": 60,
+						"turn": 3,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"obstruction_clear:basic",
+							"fish_market:basic",
+							"education:basic"
+						],
+						"after_nature": 44,
+						"failure": "",
+						"final_water": 44,
+						"season": "winter",
+						"start": 51,
+						"turn": 4,
+						"water_loss": 2
+					},
+					{
+						"actions": [
+							"seed_bank:effective",
+							"eco_resettle:basic"
+						],
+						"after_nature": 46,
+						"failure": "vegetation",
+						"final_water": 46,
+						"season": "spring",
+						"start": 44,
+						"turn": 5,
+						"water_loss": 5
+					}
+				],
+				[
+					{
+						"actions": [
+							"fish_restock:deep"
+						],
+						"after_nature": 53,
+						"failure": "water_quality",
+						"final_water": 53,
+						"season": "spring",
+						"start": 48,
+						"turn": 1,
+						"water_loss": 2
+					}
+				]
+			],
+			"seasonal": {
+				"autumn": {
+					"affected": 73,
+					"loss": 225,
+					"turns": 77
+				},
+				"spring": {
+					"affected": 115,
+					"loss": 227,
+					"turns": 142
+				},
+				"summer": {
+					"affected": 97,
+					"loss": 700,
+					"turns": 100
+				},
+				"winter": {
+					"affected": 67,
+					"loss": 398,
+					"turns": 70
+				}
+			},
+			"survival_pct": 7.0,
+			"turns": 389
+		}
+	],
+	"pressure_method": "mean exposure before/after nature",
+	"rules": {
+		"autumn": {
+			"drift": [
+				-8,
+				-4
+			],
+			"high": 60,
+			"high_loss": {
+				"birds": 2,
+				"vegetation": 2
+			},
+			"low": 44,
+			"low_loss": {
+				"birds": 1,
+				"fish": 2,
+				"vegetation": 2,
+				"water_quality": 1
+			},
+			"theme": "渐次退水、露滩备食"
+		},
+		"spring": {
+			"drift": [
+				3,
+				6
+			],
+			"high": 62,
+			"high_loss": {
+				"fish": 1,
+				"vegetation": 3
+			},
+			"low": 48,
+			"low_loss": {
+				"fish": 2,
+				"vegetation": 2,
+				"water_quality": 1
+			},
+			"theme": "涨水育苗、鱼类繁殖"
+		},
+		"summer": {
+			"drift": [
+				5,
+				9
+			],
+			"high": 74,
+			"high_loss": {
+				"community": 1,
+				"vegetation": 3,
+				"water_quality": 1
+			},
+			"low": 58,
+			"low_loss": {
+				"fish": 3,
+				"vegetation": 3,
+				"water_quality": 2
+			},
+			"theme": "丰水连通、预留防洪空间"
+		},
+		"winter": {
+			"drift": [
+				-6,
+				-3
+			],
+			"high": 50,
+			"high_loss": {
+				"birds": 3,
+				"vegetation": 2
+			},
+			"low": 36,
+			"low_loss": {
+				"birds": 2,
+				"fish": 1,
+				"vegetation": 2,
+				"water_quality": 1
+			},
+			"theme": "保留浅水、守护越冬觅食地"
+		}
+	},
+	"year_shift": 1
+}

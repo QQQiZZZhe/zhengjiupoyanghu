@@ -8,11 +8,12 @@ extends Node
 ## user://savegame.json（那个是单局进度，删档重开依然在）。
 ## 判负重来、中途退出、重开一局，已收集的知识卡都不会掉。
 ##
-## 知识卡数据本体仍旧在 GameState.KNOWLEDGE_CARDS（8 张，定义顺序 = 图鉴顺序）；
+## 知识卡数据本体仍旧在 GameState.KNOWLEDGE_CARDS（定义顺序 = 图鉴顺序）；
 ## 这里只管「收没收到」。游戏里那张卡真的弹到玩家面前时（main.gd 的 _show_knowledge）
 ## 调 unlock()，主页图鉴就能点亮它。
 
 const SAVE_PATH := "user://knowledge.json"
+signal card_collected(card_id: String)
 
 var _collected: Dictionary = {}
 
@@ -88,6 +89,7 @@ func unlock(card_id: String) -> bool:
 		return false
 	_collected[card_id] = true
 	_save()
+	card_collected.emit(card_id)
 	return true
 
 
