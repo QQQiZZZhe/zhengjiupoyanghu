@@ -4,6 +4,7 @@ extends Node2D
 const LIGHT_RAY := Vector2(0.14, 0.22)
 var points := PackedVector2Array()
 var softness := 4.0
+var _mesh: ArrayMesh
 
 func update_projection(card: Control, tilt: Vector2) -> void:
 	var transform := card.get_global_transform()
@@ -31,9 +32,21 @@ func _draw() -> void:
 	if points.size() != 4: return
 	var center := Vector2.ZERO
 	for point in points: center += point * 0.25
+	var vertices := PackedVector2Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
 	# 多层半影固定在接收平面，独立于卡面着色器。
 	for layer in range(8, -1, -1):
-		var ring := PackedVector2Array()
+		var start := vertices.size()
 		for point in points:
-			ring.append(point + (point - center).normalized() * softness * layer / 8.0)
-		draw_colored_polygon(ring, Color(0.015, 0.025, 0.025, 0.055))
+			vertices.append(point + (point - center).normalized() * softness * layer / 8.0)
+			colors.append(Color(0.015, 0.025, 0.025, 0.055))
+		indices.append_array(PackedInt32Array([start, start + 1, start + 2, start, start + 2, start + 3]))
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	_mesh = ArrayMesh.new()
+	_mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
+	draw_mesh(_mesh, null)

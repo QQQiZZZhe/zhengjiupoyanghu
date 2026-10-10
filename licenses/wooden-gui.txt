@@ -1,0 +1,11 @@
+Pixel Art Wooden GUI by Narik / Soulofkiran
+Author: Soulofkiran (Narik); distributed on OpenGameArt by DustDFG.
+License: Creative Commons Zero 1.0 (CC0).
+License URL: https://creativecommons.org/publicdomain/zero/1.0/
+Source: https://opengameart.org/content/pixel-art-wooden-gui-by-narik-soulofkiran
+Original author: https://soulofkiran.itch.io/pixel-art-wooden-gui-v1
+License proof linked by source: https://itch.io/post/7775716
+Downloaded: 2026-10-10
+Original asset: wooden_gui_32x32.png (unchanged sprite sheet).
+Game use: warm wooden panel region (448, 640, 96, 96), nine-sliced into
+the upper-right pending-card board. No runtime network dependency.

@@ -11,6 +11,14 @@ const TOTAL_TURNS := 16          # 一局 16 回合 = 4 年 × 4 季
 # 卡池分季的依据是鄱阳湖的水文节律：春涨水、夏高水、秋落水、冬枯水。
 const SEASONS := ["spring", "summer", "autumn", "winter"]
 const SEASON_NAMES := {"spring": "春", "summer": "夏", "autumn": "秋", "winter": "冬"}
+# 迁徙改变在湖候鸟数量，四季合计为零；自然迁出不按难度放大。
+const BIRD_MIGRATION_DELTA := {"spring": -4, "summer": -3, "autumn": 3, "winter": 4}
+const BIRD_MIGRATION_REASON := {
+	"spring": "春季迁出（越冬候鸟北迁）",
+	"summer": "夏季低谷（候鸟在北方繁殖）",
+	"autumn": "秋季迁入（越冬候鸟陆续抵达）",
+	"winter": "冬季越冬（在湖候鸟达到高峰）",
+}
 # 每季一句旁白：抽牌界面顶部用，把季节分类变成沉浸式科普
 const SEASON_TAGLINE := {
 	"spring": "五河来水，鱼群启程回家",
@@ -566,6 +574,42 @@ const ACTION_CARDS := [
 		"side_note": {"deep": "集中分洪占用沿岸作业空间，社区信任 -3；退水过度会加重干旱"},
 	},
 	{
+		"id": "emergency_drainage", "name": "应急排涝", "category": "manage",
+		"season": "all", "tags": ["洪水调度", "水工调控"],
+		"desc": "启用临时泵站与排水设施，快速降低偏高水位。投入较低、退水幅度较小，适合应急；低水位时慎用。",
+		"cost": 20,
+		"tiers": {
+			"basic": {"effects": [{"metric": "water_level", "delta": -4, "delay": 0}, {"metric": "community", "delta": -1, "delay": 0}]},
+			"effective": {"effects": [{"metric": "water_level", "delta": -7, "delay": 0}, {"metric": "community", "delta": -1, "delay": 0}]},
+			"deep": {"effects": [{"metric": "water_level", "delta": -12, "delay": 0}, {"metric": "community", "delta": -2, "delay": 0}]},
+		},
+		"side_note": {"deep": "泵站作业扰动沿岸生活，社区信任 -2；退水过度会加重干旱"},
+	},
+	{
+		"id": "outlet_clearance", "name": "泄水口疏通", "category": "manage",
+		"season": "all", "tags": ["洪水调度", "水体治理"],
+		"desc": "清理泄水口与排水通道的堵塞，恢复出流能力，即时降低湖区水位，并在下一回合改善水质。低水位时慎用。",
+		"cost": 30,
+		"tiers": {
+			"basic": {"effects": [{"metric": "water_level", "delta": -5, "delay": 0}, {"metric": "water_quality", "delta": 1, "delay": 1}, {"metric": "community", "delta": -1, "delay": 0}]},
+			"effective": {"effects": [{"metric": "water_level", "delta": -9, "delay": 0}, {"metric": "water_quality", "delta": 2, "delay": 1}, {"metric": "community", "delta": -2, "delay": 0}]},
+			"deep": {"effects": [{"metric": "water_level", "delta": -16, "delay": 0}, {"metric": "water_quality", "delta": 3, "delay": 1}, {"metric": "community", "delta": -3, "delay": 0}]},
+		},
+		"side_note": {"effective": "疏通施工影响沿岸作业，社区信任 -2；水质改善在下一回合生效"},
+	},
+	{
+		"id": "floodplain_diversion", "name": "滞洪区分流", "category": "ecology",
+		"season": "summer", "tags": ["洪水调度", "生态修复"],
+		"desc": "汛期启用滞洪区与分流沟渠，分担湖区高水位压力，退水后恢复浅滩植被。夏季可用，需兼顾滞洪区居民利益。",
+		"cost": 40,
+		"tiers": {
+			"basic": {"effects": [{"metric": "water_level", "delta": -4, "delay": 0}, {"metric": "vegetation", "delta": 2, "delay": 1}, {"metric": "community", "delta": -1, "delay": 0}]},
+			"effective": {"effects": [{"metric": "water_level", "delta": -10, "delay": 0}, {"metric": "vegetation", "delta": 3, "delay": 1}, {"metric": "community", "delta": -2, "delay": 0}]},
+			"deep": {"effects": [{"metric": "water_level", "delta": -18, "delay": 0}, {"metric": "vegetation", "delta": 6, "delay": 1}, {"metric": "community", "delta": -4, "delay": 0}]},
+		},
+		"side_note": {"deep": "扩大滞洪区占用沿岸土地，社区信任 -4；植被在下一回合恢复"},
+	},
+	{
 		"id": "wetland_restore", "name": "退田还湿（湿地生态修复）", "category": "ecology",
 		"season": "autumn",
 		"tags": ["生态修复"],
@@ -1035,6 +1079,8 @@ const ACTION_CARDS := [
 ]
 
 # ==================== 知识卡数据 ====================
+## 分类与美术 Card.zip 的九套牌底一致；彩蛋单独排在末尾。
+const KNOWLEDGE_CATEGORIES := preload("res://scripts/knowledge_categories.gd").ORDER
 const KNOWLEDGE_CARDS := {
 	"egg_dixinhu": {
 		"name": "狄鑫斛", "category": "彩蛋", "trigger": "random_only",
@@ -1652,8 +1698,8 @@ const SITUATION_TEXT := {
 	"drought": "【自然预警】气象预报未来一季降水显著偏少，湖区面临干旱风险。",
 	"flood": "【自然预警】上游持续降雨，水文站预计湖区水位快速上涨，有洪水风险。",
 	"birds_field": "【社区报告】农户报告白鹤进入稻田取食，人鸟冲突初现端倪。",
-	"calm_safe": "【湖区简报】水位落在本季参考区间内，六项指标暂无异常。",
-	"calm_off": "【湖区简报】水位略偏离本季参考区间，其余各项暂无异常。",
+	"calm_safe": "【湖区简报】暂未触发明显洪旱预警或候鸟进田情况。",
+	"calm_off": "【湖区简报】水位略偏离本季参考区间，暂未触发明显洪旱预警或候鸟进田情况。",
 }
 # 弹窗里在横幅那句话后面，再补一句它意味着什么（同样只描述，不给数字）
 const SITUATION_WHY := {
@@ -1704,10 +1750,14 @@ var carry: int = 0          # 结转下回合
 var last_metric_funding: int = 0   # 上一回合由六项指标换来的额外拨款（结算里显示用，仅结果不给解释）
 var research_points: int = 0
 var metrics: Dictionary = {}
+# Bounded read-only HUD cache; excluded from saves and simulation state.
+var _hover_preview_key: Array = []
+var _hover_previews: Dictionary = {}
 var species_pop: Dictionary = {}     # 每物种数量 0-100
 var plant_pop: Dictionary = {}       # 每植物数量 0-100
 var effects_queue: Array = []       # 延迟效果 {metric, delta, remaining, source}
-var used_action_ids: Array = []     # 本回合已执行的卡
+var used_action_ids: Array = []     # 本回合已执行的卡（含调度，供协同与知识卡判定）
+var free_actions_executed: int = 0  # 调度牌不消耗普通行动位
 var knowledge_unlocked: Array = []
 var pending_knowledge: Array = []   # 待弹出的知识卡 id
 ## 知识卡随机赠送用**独立**随机源：不消耗对局主随机流，
@@ -1726,7 +1776,10 @@ var log_messages: Array = []        # 因果提示
 #   加进去只会给存档增加无谓的不兼容面。
 var score_ledger: Array = []
 var game_over: bool = false
-var total_spent: int = 0            # 累计卡牌支出（用于资金效率评价）
+var total_spent: int = 0            # 累计行动、调度与刷新支出（用于资金效率评价）
+var turn_budget: int = 0            # 本回合拨款、结转与运营扣除后的总预算
+var turn_card_spent: int = 0        # 本回合普通行动卡 + 紧急调度费用，不含刷新手牌
+var turn_other_spent: int = 0       # 本回合刷新等非卡牌支出，同样占用总预算
 # ===== 肉鸽机制状态 =====
 var run_seed: int = 0               # 本局种子（同种子可复现，用于反事实对照）
 var run_id: String = ""             # Unique reward receipt; independent of seeded gameplay RNG.
@@ -1738,6 +1791,8 @@ var forecast_crisis: Dictionary = {} # 深预警：2 回合后那一场，下回
                                      # （不是另抽一次随机 —— 是把本来下一回合才抽的那个
                                      #   提前一回合抽出来存着，所以预告一定兑现）
 var last_crisis_name: String = ""   # 上回合爆发的危机名（用于结算展示）
+const MUSIC_CRISIS_RECOVERY_RATIO := 0.5
+var music_crisis_recovery: Dictionary = {} # 危机曲解除条件：补回 50% 实际损失（向上取整）
 var crisis_history: Array = []      # 已爆发的危机 [{id, turn}]，防连出与冷却的依据
 var warn_history: Array = []        # 本局预警历史 [{turn, id, value, hit_turn}]，顶部「预警回顾」用
                                     # hit_turn = -1 表示这条预警还没等到爆发（本局就结束了）
@@ -1781,6 +1836,7 @@ func serialize() -> Dictionary:
 		"plant_pop": plant_pop.duplicate(),
 		"effects_queue": effects_queue.duplicate(true),
 		"used_action_ids": used_action_ids.duplicate(),
+		"free_actions_executed": free_actions_executed,
 		"ever_played": ever_played.duplicate(),
 		# 紧急调度：待结算的调度牌与冷却回合都要带回来，否则中途读档会白丢那 40 万
 		"dispatched_cards": dispatched_cards.duplicate(true),
@@ -1790,12 +1846,16 @@ func serialize() -> Dictionary:
 		"pending_knowledge": pending_knowledge.duplicate(),
 		"log_messages": log_messages.duplicate(),
 		"game_over": game_over, "total_spent": total_spent,
+		"turn_budget": turn_budget, "turn_card_spent": turn_card_spent,
+		"turn_other_spent": turn_other_spent,
 		"run_seed": run_seed, "run_id": run_id, "settlement": settlement,
 		# 本局天赋词条：继续游戏要原样带回来，否则中途读档会丢加成
 		"talents": Talents.granted.duplicate(),
 		"tree_talents": Talents.run_tree_ranks.duplicate(), "tree_mastery": Talents.run_tree_mastery,
 		"difficulty": difficulty, "floating_islands": floating_islands,
 		"pending_crisis": pending_crisis.duplicate(true),
+		"music_crisis_recovery": music_crisis_recovery.duplicate(),
+		"music_crisis_recovery_ratio": MUSIC_CRISIS_RECOVERY_RATIO,
 		"forecast_crisis": forecast_crisis.duplicate(true),
 		"last_crisis_name": last_crisis_name,
 		"crisis_history": crisis_history.duplicate(true),
@@ -1812,9 +1872,16 @@ func serialize() -> Dictionary:
 
 
 ## 从存档恢复全部运行时状态（不触发信号，由主场景随后刷新 HUD 与 3D）
-func load_state(d: Dictionary) -> void:
+func load_state(d: Dictionary, restore_talents: bool = true) -> void:
 	turn = int(d.get("turn", 0))
 	funds = int(d.get("funds", 0))
+	# 旧存档可由已调度记录恢复确定的调度费用。
+	var legacy_dispatch_spent := 0
+	if not d.get("dispatched_cards", []).is_empty():
+		legacy_dispatch_spent = DISPATCH_COST + DISPATCH_PRICE_STEP * maxi(0, int(d.get("dispatch_used_count", 1)) - 1)
+	turn_card_spent = int(d.get("turn_card_spent", legacy_dispatch_spent))
+	turn_budget = int(d.get("turn_budget", maxi(0, funds + turn_card_spent)))
+	turn_other_spent = int(d.get("turn_other_spent", 0))
 	carry = int(d.get("carry", 0))
 	last_metric_funding = int(d.get("last_metric_funding", 0))
 	research_points = int(d.get("research_points", 0))
@@ -1823,6 +1890,7 @@ func load_state(d: Dictionary) -> void:
 	plant_pop = _int_dict(d.get("plant_pop", {}))
 	effects_queue = d.get("effects_queue", [])
 	used_action_ids = d.get("used_action_ids", [])
+	free_actions_executed = clampi(int(d.get("free_actions_executed", 0)), 0, used_action_ids.size())
 	ever_played = d.get("ever_played", {})
 	dispatched_cards = d.get("dispatched_cards", [])
 	dispatch_last_turn = int(d.get("dispatch_last_turn", -99))
@@ -1833,13 +1901,21 @@ func load_state(d: Dictionary) -> void:
 	game_over = bool(d.get("game_over", false))
 	total_spent = int(d.get("total_spent", 0))
 	run_seed = int(d.get("run_seed", 0))
-	Talents.set_granted(d.get("talents", []))
-	Talents.set_run_tree(d.get("tree_talents", {}), bool(d.get("tree_mastery", false)))
+	if restore_talents:
+		Talents.set_granted(d.get("talents", []))
+		Talents.set_run_tree(d.get("tree_talents", {}), bool(d.get("tree_mastery", false)))
 	settlement = int(d.get("settlement", 70))
 	difficulty = int(d.get("difficulty", 1 if d.get("hard_mode", false) else 0))
 	run_id = str(d.get("run_id", "legacy:%d:%d" % [run_seed, difficulty]))
 	floating_islands = int(d.get("floating_islands", 0))
 	pending_crisis = d.get("pending_crisis", {})
+	music_crisis_recovery = d.get("music_crisis_recovery", {})
+	# 旧存档要求全量修复：将剩余修复量减半，不影响游戏指标和判负规则。
+	if float(d.get("music_crisis_recovery_ratio", 1.0)) > MUSIC_CRISIS_RECOVERY_RATIO:
+		for metric in music_crisis_recovery:
+			var current: int = int(metrics.get(metric, 0))
+			var remaining := maxi(0, int(music_crisis_recovery[metric]) - current)
+			music_crisis_recovery[metric] = current + ceili(remaining * MUSIC_CRISIS_RECOVERY_RATIO)
 	forecast_crisis = d.get("forecast_crisis", {})
 	last_crisis_name = str(d.get("last_crisis_name", ""))
 	crisis_history = d.get("crisis_history", [])
@@ -1872,10 +1948,14 @@ func reset_game() -> void:
 	funds = 0
 	research_points = 0
 	total_spent = 0
+	turn_budget = 0
+	turn_card_spent = 0
+	turn_other_spent = 0
 	settlement = 70
 	floating_islands = 0
 	effects_queue = []
 	used_action_ids = []
+	free_actions_executed = 0
 	knowledge_unlocked = []
 	pending_knowledge = []
 	knowledge_last_turn = -99
@@ -1883,6 +1963,7 @@ func reset_game() -> void:
 	score_ledger = []
 	game_over = false
 	pending_crisis = {}
+	music_crisis_recovery = {}
 	forecast_crisis = {}
 	last_crisis_name = ""
 	crisis_history = []
@@ -2029,6 +2110,7 @@ func _metric_funding() -> int:
 func start_new_turn() -> void:
 	turn += 1
 	used_action_ids = []
+	free_actions_executed = 0
 	clear_dispatch()          # 上一轮的调度牌已在回合末结算完，这里清空待办清单
 	log_messages = []
 
@@ -2042,6 +2124,9 @@ func start_new_turn() -> void:
 	funding += int(Talents.get_bonus("funding"))
 
 	funds = carry + funding - (OPERATION_COST + int(Talents.get_bonus("operation")))
+	turn_budget = funds
+	turn_card_spent = 0
+	turn_other_spent = 0
 	carry = 0
 
 	metrics_changed.emit()
@@ -2079,9 +2164,16 @@ func _resolve_pending_crisis() -> void:
 	pending_crisis = {}
 	last_crisis_name = c["name"]
 	crisis_history.append({"id": c["id"], "turn": turn})   # 防连出 / 冷却的依据
+	record_crisis_notice(c, 0)
 	_mark_warning_hit(str(c["id"]), turn)
 	_add_log("⚠ %s" % c["hit"])
 	for e in c["effects"]:
+		if int(e["delta"]) < 0:
+			var metric: String = str(e["metric"])
+			var before: int = int(metrics[metric])
+			var after := clampi(before + int(e["delta"]), 0, 100)
+			var recovery_target := after + ceili((before - after) * MUSIC_CRISIS_RECOVERY_RATIO)
+			music_crisis_recovery[metric] = maxi(recovery_target, int(music_crisis_recovery.get(metric, 0)))
 		_apply_delta(e["metric"], e["delta"], false, "crisis", str(c["name"]))   # 危机伤害不叠负向倍率，见 _apply_delta 注释
 		_add_log("   %s %+d" % [METRIC_NAMES[e["metric"]], e["delta"]])
 	if c.has("settlement"):
@@ -2091,6 +2183,14 @@ func _resolve_pending_crisis() -> void:
 	metrics_changed.emit()
 	crisis_hit.emit(c)
 	check_failure_now()   # 危机爆发把指标打到致死线以下 → 当场判负，不再放你一回合
+
+
+## 音乐的危机生命周期独立于警示弹窗；关掉弹窗不会解除危机。
+func has_unresolved_music_crisis() -> bool:
+	for metric in music_crisis_recovery.keys():
+		if int(metrics.get(metric, 0)) >= int(music_crisis_recovery[metric]):
+			music_crisis_recovery.erase(metric)
+	return not pending_crisis.is_empty() or not music_crisis_recovery.is_empty()
 
 
 ## 抽取本回合的危机预警（提前 1 回合告知，给玩家应对机会）
@@ -2146,7 +2246,8 @@ func _promote_forecast_if_needed() -> void:
 		return  # 预告与正式预警一一对应，正常不会同时存在（后者是防御）
 	pending_crisis = forecast_crisis
 	forecast_crisis = {}
-	# 不重复记 warn_history：预告那一回合已经记过了（lead=2）
+	# 同一爆发回合会合并到已有深预警，同时补齐旧档遗漏。
+	record_crisis_notice(pending_crisis, 1)
 
 
 ## 抽一场危机。at_turn = 判定「冷却 / 全局喘息 / 概率」用的时点：
@@ -2200,11 +2301,38 @@ func _roll_crisis(at_turn: int, exclude_id: String = "") -> Dictionary:
 ## 记一条预警历史（顶部「预警回顾」读它）。
 ## lead = 提前几回合告知：1 = 常规预警，2 = 深预警
 func _note_warning(c: Dictionary, lead: int) -> void:
-	var pc := _parse_cond_simple(str(c["cond"]))
+	record_crisis_notice(c, lead)
+
+
+## 用预计爆发回合区分每一场危机；生成、展示、读档均可安全补记。
+func record_crisis_notice(c: Dictionary, lead: int = 1, notice_turn: int = -1) -> void:
+	if c.is_empty():
+		return
+	var issued := turn if notice_turn < 0 else notice_turn
+	var expected := issued + lead
+	var id := str(c.get("id", ""))
+	for entry in warn_history:
+		var old_expected := int(entry.get("expected_hit_turn", int(entry.get("turn", 0)) + int(entry.get("lead", 1))))
+		if str(entry.get("id", "")) == id and old_expected == expected:
+			entry["expected_hit_turn"] = expected
+			entry["crisis"] = c.duplicate(true)
+			if lead == 0:
+				entry["hit_turn"] = expected
+			return
+	var pc := _parse_cond_simple(str(c.get("cond", "")))
 	warn_history.append({
-		"turn": turn, "id": c["id"], "hit_turn": -1, "lead": lead,
+		"turn": issued, "id": id, "hit_turn": expected if lead == 0 else -1,
+		"lead": lead, "expected_hit_turn": expected, "crisis": c.duplicate(true),
 		"value": int(metrics.get(str(pc.get("metric", "")), 0)),
 	})
+
+
+func restore_crisis_notices(next_hit_turn: int) -> void:
+	record_crisis_notice(pending_crisis, 1, next_hit_turn - 1)
+	record_crisis_notice(forecast_crisis, 2, next_hit_turn - 1)
+	for hit in crisis_history:
+		var c := crisis_by_id(str(hit.get("id", "")))
+		record_crisis_notice(c, 0, int(hit.get("turn", turn)))
 
 
 ## 深预警是否已开启（科研点累计达标，**不消耗**）
@@ -2260,7 +2388,7 @@ func crisis_by_id(id: String) -> Dictionary:
 func _mark_warning_hit(id: String, hit_turn: int) -> void:
 	for i in range(warn_history.size() - 1, -1, -1):
 		var e: Dictionary = warn_history[i]
-		if str(e["id"]) == id and int(e.get("hit_turn", -1)) < 0:
+		if str(e["id"]) == id and int(e.get("expected_hit_turn", int(e.get("turn", 0)) + int(e.get("lead", 1)))) == hit_turn:
 			e["hit_turn"] = hit_turn
 			return
 
@@ -2424,11 +2552,15 @@ func card_by_id(id: String) -> Dictionary:
 
 
 ## 花一笔钱（返回是否成功）。局内消费统一走这里，保证 total_spent 记账不漏。
-func spend(amount: int) -> bool:
+func spend(amount: int, count_for_cards: bool = false) -> bool:
 	if funds < amount:
 		return false
 	funds -= amount
 	total_spent += amount
+	if count_for_cards:
+		turn_card_spent += amount
+	else:
+		turn_other_spent += amount
 	funds_changed.emit()
 	return true
 
@@ -2457,12 +2589,32 @@ func dispatch_card(card_id: String) -> bool:
 		return false
 	if _find_card(card_id).is_empty():
 		return false
-	if not spend(dispatch_cost()):
+	var paid := dispatch_cost()
+	var previous_last_turn := dispatch_last_turn
+	if not spend(paid, true):
 		return false
 	dispatch_used_count += 1     # 记在前头：下一次的报价立刻变贵
 	dispatch_last_turn = turn
-	dispatched_cards.append({"card_id": card_id, "tier": DISPATCH_TIER})
+	dispatched_cards.append({"card_id": card_id, "tier": DISPATCH_TIER,
+		"paid_cost": paid, "previous_last_turn": previous_last_turn})
 	return true
+
+
+## 撤销尚未结算的调度：按实际成交价退费，恢复报价及冷却。
+func cancel_dispatch(card_id: String) -> bool:
+	for i in dispatched_cards.size():
+		var entry: Dictionary = dispatched_cards[i]
+		if str(entry["card_id"]) != card_id: continue
+		var paid := int(entry.get("paid_cost", DISPATCH_COST + DISPATCH_PRICE_STEP * maxi(0, dispatch_used_count - 1)))
+		dispatched_cards.remove_at(i)
+		funds += paid
+		total_spent = maxi(0, total_spent - paid)
+		turn_card_spent = maxi(0, turn_card_spent - paid)
+		dispatch_used_count = maxi(0, dispatch_used_count - 1)
+		dispatch_last_turn = int(entry.get("previous_last_turn", -99))
+		funds_changed.emit()
+		return true
+	return false
 
 
 ## 每回合开始清掉上一轮的调度记录（dispatch_last_turn 要留着，冷却靠它算）
@@ -2564,7 +2716,7 @@ func _crisis_counter_set() -> Dictionary:
 ## 能否执行：资金够 + 行动位够
 func can_execute(card_id: String, tier: String) -> bool:
 	var max_actions := action_slots()
-	if used_action_ids.size() >= max_actions:
+	if used_action_ids.size() - free_actions_executed >= max_actions:
 		return false
 	return funds >= tier_cost(card_id, tier)
 
@@ -2590,9 +2742,12 @@ func execute_action(card_id: String, tier: String, free: bool = false) -> bool:
 		var cost := tier_cost(card_id, tier)
 		funds -= cost
 		total_spent += cost
+		turn_card_spent += cost
 	# 行动位上限只在 free=false 时拦；但两种路径都要记进 used_action_ids ——
 	# 它同时是「本回合打过什么」的依据（自然演化的条件、协同触发都读它）。
 	used_action_ids.append(card_id)
+	if free:
+		free_actions_executed += 1
 	# 全局累计（**跨回合不清零**）：结算报告的「转产与补偿覆盖率」要按整局口径算，
 	# 而 used_action_ids 每回合开始都会被清空，拿它统计等于只看最后一回合。
 	ever_played[card_id] = int(ever_played.get(card_id, 0)) + 1
@@ -2682,8 +2837,17 @@ func natural_evolution() -> void:
 ##   min/max = 叠加难度负向倍率后，玩家真正会看到的区间
 ##   kind    = random / loss / gain / none
 ## roll_random=false 时不去动水位那次随机（HUD 每帧查它，绝不能扰动全局随机序列）
-func natural_evolution_plan(roll_random: bool = true, water_delta_override: int = 999) -> Array:
-	var sim: Dictionary = metrics.duplicate()   # 推演副本：后一步的条件要看前几步之后的值（与原执行顺序一致）
+func settlement_water_delta() -> int:
+	# Reserve one seasonal weather result per run/turn. Forecasts and reloads
+	# read the same roll, without consuming or rerolling the global RNG.
+	var drift := water_drift_range(current_season())
+	var weather := RandomNumberGenerator.new()
+	weather.seed = run_seed + turn * 104729 + 0x5455524E
+	return weather.randi_range(int(drift[0]), int(drift[1]))
+
+
+func natural_evolution_plan(roll_random: bool = true, water_delta_override: int = 999, source_metrics: Dictionary = {}) -> Array:
+	var sim: Dictionary = (source_metrics if not source_metrics.is_empty() else metrics).duplicate()   # 推演副本：后一步的条件要看前几步之后的值（与原执行顺序一致）
 	var out: Array = []
 
 	# 1) 水位按**季节节律**变化 —— 贴鄱阳湖的水文现实：春涨水、夏高水、秋落水、冬枯水。
@@ -2703,7 +2867,7 @@ func natural_evolution_plan(roll_random: bool = true, water_delta_override: int 
 			wl_why = "秋季落水（水位回落，洲滩渐次露出）"
 		"winter":
 			wl_why = "冬季枯水（全年最低，碟形湖脱离主湖）"
-	var wl: int = _randi_range(wl_raw_lo, wl_raw_hi) if roll_random else roundi((wl_raw_lo + wl_raw_hi) / 2.0)
+	var wl: int = settlement_water_delta() if roll_random else roundi((wl_raw_lo + wl_raw_hi) / 2.0)
 	if water_delta_override != 999: wl = clampi(water_delta_override, wl_raw_lo, wl_raw_hi)
 	out.append({"metric": "water_level", "delta": wl,
 		"applied_delta": wl, "min": wl_raw_lo, "max": wl_raw_hi, "kind": "random",
@@ -2747,7 +2911,12 @@ func natural_evolution_plan(roll_random: bool = true, water_delta_override: int 
 		out.append({"metric": "vegetation", "delta": 0, "min": 0, "max": 0, "kind": "none",
 			"why": "水质 %d（45~70）→ 植被本回合不变" % q})
 
-	# 4) 植被是候鸟食物基础（看推演后的植被）
+	# 4) 季节迁徙与栖息地变化共同决定候鸟值，预览和实际结算共用。
+	var migration: int = BIRD_MIGRATION_DELTA[season]
+	out.append({"metric": "birds", "delta": migration, "applied_delta": migration,
+		"min": migration, "max": migration, "kind": "loss" if migration < 0 else "gain",
+		"why": BIRD_MIGRATION_REASON[season]})
+	# 植被仍是候鸟食物基础（看推演后的植被）。
 	var veg: int = int(sim.get("vegetation", 0))
 	if veg < 42:
 		out.append({"metric": "birds", "delta": -3,
@@ -2792,13 +2961,14 @@ func _evolution_delta(e: Dictionary) -> int:
 	return clampi(_scaled_delta(int(e["delta"])), int(e["min"]), int(e["max"]))
 
 ## 枚举全部水文随机值，逐条夹取，保留水质/植被门槛联动，悬停推演不消耗随机数。
-func natural_evolution_outcomes() -> Array:
+func natural_evolution_outcomes(source_metrics: Dictionary = {}) -> Array:
 	var drift: Array = water_drift_range()
 	var outcomes: Array = []
+	var starting_metrics: Dictionary = (source_metrics if not source_metrics.is_empty() else metrics).duplicate()
 	for wl in range(int(drift[0]), int(drift[1]) + 1):
-		var snapshot: Dictionary = metrics.duplicate()
+		var snapshot: Dictionary = starting_metrics.duplicate()
 		var pressure_losses: Dictionary = {}
-		for e in natural_evolution_plan(false, wl):
+		for e in natural_evolution_plan(false, wl, starting_metrics):
 			var metric: String = str(e["metric"])
 			var d := _evolution_delta(e)
 			snapshot[metric] = clampi(int(snapshot.get(metric, 0)) + d, 0, 100)
@@ -2811,12 +2981,32 @@ func natural_evolution_outcomes() -> Array:
 ## 只读，不改状态。数据来源：natural_evolution_plan()（回合末自然演化）+ pending_crisis（下回合结算时爆发的危机）
 ## 枚举水位随机值，汇总同一指标的全部变动，包含越界压力及后续生态联动。
 func metric_hover_preview(metric: String) -> Dictionary:
+	# Snapshot all inputs used by the deterministic forecast. Comparing small
+	# values catches in-place changes as well as new games and loaded saves.
+	var key: Array = [metrics, difficulty, turn, run_seed, used_action_ids, pending_crisis]
+	if key != _hover_preview_key:
+		_hover_preview_key = key.duplicate(true)
+		_hover_previews.clear()
+	if not _hover_previews.has(metric):
+		_hover_previews[metric] = _compute_metric_hover_preview(metric)
+	# Callers may freely edit their returned copy without poisoning the cache.
+	return _hover_previews[metric].duplicate(true)
+
+func _compute_metric_hover_preview(metric: String) -> Dictionary:
 	var cur: int = int(metrics.get(metric, 0))
 	var line: int = failure_threshold_for(metric)
+	var conflict: Dictionary = bird_conflict_state()
+	var conflict_penalty: int = int(conflict["penalty"]) if bool(conflict["active"]) else 0
+	# 回合结算先扣人鸟矛盾，再推进自然演化。自然演化可能因此跨过社区信任等指标的衰减门槛，
+	# 所以要在这份只读推演副本上先扣分，再重新计算全链自然变化，不能只从最终结果减一个常数。
+	var projected_metrics: Dictionary = metrics.duplicate(true)
+	if conflict_penalty > 0:
+		for affected in ["community", "birds"]:
+			projected_metrics[affected] = clampi(int(projected_metrics.get(affected, 0)) - conflict_penalty, 0, 100)
 
 	var end_min := 100
 	var end_max := 0
-	for outcome in natural_evolution_outcomes():
+	for outcome in natural_evolution_outcomes(projected_metrics):
 		var value: int = int(outcome["metrics"].get(metric, cur))
 		end_min = mini(end_min, value)
 		end_max = maxi(end_max, value)
@@ -2846,7 +3036,7 @@ func metric_hover_preview(metric: String) -> Dictionary:
 		"penalty_mult": PENALTY_MULT[difficulty],
 		# 人鸟矛盾 / 候鸟进田的判定原样带上：悬停小窗要显示「回合末会扣多少」，
 		# 数字必须和回合末真正结算的那一次同源（两侧都调 bird_conflict_state）。
-		"conflict": bird_conflict_state(),
+		"conflict": conflict,
 	}
 
 
@@ -3027,6 +3217,24 @@ func advance_effects() -> void:
 
 
 ## 回合结束：推进延迟、自然演化、结算协同、检查失败与知识卡
+## Isolated forecast: reuse settlement rules without signals to the live scene,
+## talent writes, purchases, or consuming the run's global random stream.
+var _is_settlement_preview := false
+
+func preview_settlement(cards: Array) -> Dictionary:
+	var forecast = get_script().new()
+	forecast.load_state(serialize().duplicate(true), false)
+	forecast._is_settlement_preview = true
+	for card in cards:
+		forecast.execute_action(str(card["card_id"]), str(card["tier"]), bool(card.get("dispatched", false)))
+		if forecast.game_over: break
+	if not forecast.game_over:
+		forecast.end_turn()
+	var result: Dictionary = forecast.metrics.duplicate(true)
+	forecast.free()
+	return result
+
+
 func end_turn() -> void:
 	advance_effects()
 	resolve_synergies()      # 卡牌协同（在自然演化前结算，让玩家看到组合收益）
@@ -3062,8 +3270,9 @@ func end_turn() -> void:
 	#   后面「打满回合」的 game_ended 就不会重复发一次报告。
 	_resolve_pending_crisis()
 	_promote_forecast_if_needed()
-	_maybe_warn_crisis()
-	_maybe_forecast_crisis()
+	if not _is_settlement_preview:
+		_maybe_warn_crisis()
+		_maybe_forecast_crisis()
 	# 统一 emit 一次：UI 弹窗要同时展示「下回合」与「再下一回合」两条，
 	# 所以必须等两场都定下来再通知（emit 在 _maybe_* 里发会导致弹窗只有前一条）。
 	if not pending_crisis.is_empty():
@@ -3073,7 +3282,8 @@ func end_turn() -> void:
 	if _check_failure():
 		return
 
-	_check_knowledge_triggers()
+	if not _is_settlement_preview:
+		_check_knowledge_triggers()
 
 	if turn >= TOTAL_TURNS:
 		game_over = true

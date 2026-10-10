@@ -166,12 +166,16 @@ func _ready() -> void:
 	# Exercise the real selected-hand + emergency-dispatch score choreography.
 	reset_fixture()
 	game._score_animating = false
+	game._current_phase = "allocate"
 	game.current_hand = [GameState.card_by_id("water_replenish"), GameState.card_by_id("floating_island")]
 	game._build_hand_panel()
 	await settle(0.2)
 	game._set_play_tier("effective", false)
-	for info in game.card_infos: game._toggle_card(info.panel)
+	for info in game.card_infos: preload("res://tests/card_input.gd").drop_on_board(game, info)
 	GameState.dispatched_cards = [{"card_id": "fish_restock", "tier": "effective"}]
+	game._sync_dispatched_stage_cards()
+	game._process_staged_cards(2.2)
+	await settle(0.8)
 	game.score_speed = 1.0
 	game._finish_turn()
 	await settle(0.55)

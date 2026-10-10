@@ -1,0 +1,332 @@
+[
+	{
+		"category": "ecology",
+		"id": "water_control",
+		"name": "碟形湖控水",
+		"texture": "res://assets/art/dispatch/cards/water_control.png"
+	},
+	{
+		"category": "ecology",
+		"id": "veg_restore",
+		"name": "植被补种",
+		"texture": "res://assets/art/dispatch/cards/veg_restore.png"
+	},
+	{
+		"category": "ecology",
+		"id": "submerged_planting",
+		"name": "沉水植物移栽",
+		"texture": "res://assets/art/dispatch/cards/submerged_planting.png"
+	},
+	{
+		"category": "ecology",
+		"id": "seed_bank",
+		"name": "草种库保育",
+		"texture": "res://assets/art/dispatch/cards/seed_bank.png"
+	},
+	{
+		"category": "ecology",
+		"id": "water_monitor",
+		"name": "水质监测与病害防治",
+		"texture": "res://assets/art/dispatch/cards/water_monitor.png"
+	},
+	{
+		"category": "ecology",
+		"id": "invasive_clear",
+		"name": "外来物种清除",
+		"texture": "res://assets/art/dispatch/cards/invasive_clear.png"
+	},
+	{
+		"category": "ecology",
+		"id": "bird_canteen",
+		"name": "候鸟食堂营建",
+		"texture": "res://assets/art/dispatch/cards/bird_canteen.png"
+	},
+	{
+		"category": "ecology",
+		"id": "rescue",
+		"name": "应急救护",
+		"texture": "res://assets/art/dispatch/cards/rescue.png"
+	},
+	{
+		"category": "social",
+		"id": "community_comp",
+		"name": "社区补偿",
+		"texture": "res://assets/art/dispatch/cards/community_comp.png"
+	},
+	{
+		"category": "social",
+		"id": "industry_switch",
+		"name": "转产投资",
+		"texture": "res://assets/art/dispatch/cards/industry_switch.png"
+	},
+	{
+		"category": "social",
+		"id": "guard_team",
+		"name": "社区共管与护鸟队",
+		"texture": "res://assets/art/dispatch/cards/guard_team.png"
+	},
+	{
+		"category": "social",
+		"id": "education",
+		"name": "科普宣传与公众参与",
+		"texture": "res://assets/art/dispatch/cards/education.png"
+	},
+	{
+		"category": "manage",
+		"id": "patrol",
+		"name": "执法巡逻",
+		"texture": "res://assets/art/dispatch/cards/patrol.png"
+	},
+	{
+		"category": "manage",
+		"id": "research",
+		"name": "生态监测与科研",
+		"texture": "res://assets/art/dispatch/cards/research.png"
+	},
+	{
+		"category": "ecology",
+		"id": "water_replenish",
+		"name": "生态补水（引江济湖）",
+		"texture": "res://assets/art/dispatch/cards/water_replenish.png"
+	},
+	{
+		"category": "ecology",
+		"id": "water_storage",
+		"name": "蓄水保水工程",
+		"texture": "res://assets/art/dispatch/cards/water_storage.png"
+	},
+	{
+		"category": "manage",
+		"id": "water_schedule",
+		"name": "闸坝联合调度",
+		"texture": "res://assets/art/dispatch/cards/water_schedule.png"
+	},
+	{
+		"category": "manage",
+		"id": "flood_release",
+		"name": "分洪退水调度",
+		"texture": "res://assets/art/dispatch/cards/flood_release.png"
+	},
+	{
+		"category": "manage",
+		"id": "emergency_drainage",
+		"name": "应急排涝",
+		"texture": "res://assets/art/dispatch/cards/emergency_drainage.png"
+	},
+	{
+		"category": "manage",
+		"id": "outlet_clearance",
+		"name": "泄水口疏通",
+		"texture": "res://assets/art/dispatch/cards/outlet_clearance.png"
+	},
+	{
+		"category": "ecology",
+		"id": "floodplain_diversion",
+		"name": "滞洪区分流",
+		"texture": "res://assets/art/dispatch/cards/floodplain_diversion.png"
+	},
+	{
+		"category": "ecology",
+		"id": "wetland_restore",
+		"name": "退田还湿（湿地生态修复）",
+		"texture": "res://assets/art/dispatch/cards/wetland_restore.png"
+	},
+	{
+		"category": "ecology",
+		"id": "floating_island",
+		"name": "人工浮岛（生态浮床）",
+		"texture": "res://assets/art/dispatch/cards/floating_island.png"
+	},
+	{
+		"category": "ecology",
+		"id": "dredge",
+		"name": "底泥清淤疏浚",
+		"texture": "res://assets/art/dispatch/cards/dredge.png"
+	},
+	{
+		"category": "ecology",
+		"id": "habitat_protect",
+		"name": "越冬栖息地保护",
+		"texture": "res://assets/art/dispatch/cards/habitat_protect.png"
+	},
+	{
+		"category": "social",
+		"id": "ecotourism",
+		"name": "生态旅游与观鸟经济",
+		"texture": "res://assets/art/dispatch/cards/ecotourism.png"
+	},
+	{
+		"category": "social",
+		"id": "damage_insurance",
+		"name": "野生动物致害保险",
+		"texture": "res://assets/art/dispatch/cards/damage_insurance.png"
+	},
+	{
+		"category": "social",
+		"id": "eco_brand",
+		"name": "生态产品认证与助销",
+		"texture": "res://assets/art/dispatch/cards/eco_brand.png"
+	},
+	{
+		"category": "manage",
+		"id": "fish_restock",
+		"name": "增殖放流",
+		"texture": "res://assets/art/dispatch/cards/fish_restock.png"
+	},
+	{
+		"category": "manage",
+		"id": "spawning_ground",
+		"name": "鱼类产卵场修复",
+		"texture": "res://assets/art/dispatch/cards/spawning_ground.png"
+	},
+	{
+		"category": "manage",
+		"id": "smart_patrol",
+		"name": "智慧巡护（无人机遥感）",
+		"texture": "res://assets/art/dispatch/cards/smart_patrol.png"
+	},
+	{
+		"category": "manage",
+		"id": "wetland_law",
+		"name": "湿地保护立法",
+		"texture": "res://assets/art/dispatch/cards/wetland_law.png"
+	},
+	{
+		"category": "manage",
+		"id": "grazing_ban",
+		"name": "封洲禁牧",
+		"texture": "res://assets/art/dispatch/cards/grazing_ban.png"
+	},
+	{
+		"category": "social",
+		"id": "water_comanage",
+		"name": "社区水权共管",
+		"texture": "res://assets/art/dispatch/cards/water_comanage.png"
+	},
+	{
+		"category": "social",
+		"id": "sewage_comanage",
+		"name": "社区污水共治",
+		"texture": "res://assets/art/dispatch/cards/sewage_comanage.png"
+	},
+	{
+		"category": "social",
+		"id": "fish_market",
+		"name": "社区渔市共营",
+		"texture": "res://assets/art/dispatch/cards/fish_market.png"
+	},
+	{
+		"category": "social",
+		"id": "bird_friendly",
+		"name": "候鸟友好社区",
+		"texture": "res://assets/art/dispatch/cards/bird_friendly.png"
+	},
+	{
+		"category": "social",
+		"id": "fisher_retrain",
+		"name": "渔民转产培训",
+		"texture": "res://assets/art/dispatch/cards/fisher_retrain.png"
+	},
+	{
+		"category": "social",
+		"id": "eco_jobs",
+		"name": "生态管护公益岗",
+		"texture": "res://assets/art/dispatch/cards/eco_jobs.png"
+	},
+	{
+		"category": "social",
+		"id": "eco_resettle",
+		"name": "生态搬迁安置",
+		"texture": "res://assets/art/dispatch/cards/eco_resettle.png"
+	},
+	{
+		"category": "manage",
+		"id": "sluice_fry",
+		"name": "灌江纳苗",
+		"texture": "res://assets/art/dispatch/cards/sluice_fry.png"
+	},
+	{
+		"category": "manage",
+		"id": "migration_corridor",
+		"name": "迁徙廊道管理",
+		"texture": "res://assets/art/dispatch/cards/migration_corridor.png"
+	},
+	{
+		"category": "manage",
+		"id": "algae_response",
+		"name": "水质应急除藻",
+		"texture": "res://assets/art/dispatch/cards/algae_response.png"
+	},
+	{
+		"category": "manage",
+		"id": "obstruction_clear",
+		"name": "湖区清障执法",
+		"texture": "res://assets/art/dispatch/cards/obstruction_clear.png"
+	},
+	{
+		"category": "manage",
+		"id": "lake_chief",
+		"name": "湖长制考核",
+		"texture": "res://assets/art/dispatch/cards/lake_chief.png"
+	},
+	{
+		"category": "manage",
+		"id": "fishway",
+		"name": "水工程鱼道建设",
+		"texture": "res://assets/art/dispatch/cards/fishway.png"
+	},
+	{
+		"category": "manage",
+		"id": "sand_mining",
+		"name": "采砂监管",
+		"texture": "res://assets/art/dispatch/cards/sand_mining.png"
+	},
+	{
+		"category": "ecology",
+		"id": "nonpoint_intercept",
+		"name": "汛期面源污染拦截",
+		"texture": "res://assets/art/dispatch/cards/nonpoint_intercept.png"
+	},
+	{
+		"category": "manage",
+		"id": "eco_water_scheduling",
+		"name": "生态水位联合调度",
+		"texture": "res://assets/art/dispatch/cards/eco_water_scheduling.png"
+	},
+	{
+		"category": "manage",
+		"id": "preseason_drawdown",
+		"name": "汛前预泄腾库",
+		"texture": "res://assets/art/dispatch/cards/preseason_drawdown.png"
+	},
+	{
+		"category": "ecology",
+		"id": "riparian_buffer",
+		"name": "滨湖缓冲带与生态沟渠",
+		"texture": "res://assets/art/dispatch/cards/riparian_buffer.png"
+	},
+	{
+		"category": "manage",
+		"id": "artificial_spawning_nest",
+		"name": "人工鱼巢投放",
+		"texture": "res://assets/art/dispatch/cards/artificial_spawning_nest.png"
+	},
+	{
+		"category": "ecology",
+		"id": "crab_control_replanting",
+		"name": "控蟹护草与底质改良",
+		"texture": "res://assets/art/dispatch/cards/crab_control_replanting.png"
+	},
+	{
+		"category": "ecology",
+		"id": "waterbird_food_supply",
+		"name": "越冬候鸟食源补给",
+		"texture": "res://assets/art/dispatch/cards/waterbird_food_supply.png"
+	},
+	{
+		"category": "social",
+		"id": "wetland_benefit_compensation",
+		"name": "湿地生态效益补偿",
+		"texture": "res://assets/art/dispatch/cards/wetland_benefit_compensation.png"
+	}
+]

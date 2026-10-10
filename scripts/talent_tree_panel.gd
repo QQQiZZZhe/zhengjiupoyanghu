@@ -59,6 +59,7 @@ func _ready() -> void:
 	body.add_theme_constant_override("separation", 14)
 	content.add_child(body)
 	graph_scroll = ScrollContainer.new()
+	preload("res://scripts/motion_scroll.gd").attach(graph_scroll)
 	graph_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	graph_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	graph_scroll.custom_minimum_size = Vector2(180, 200)

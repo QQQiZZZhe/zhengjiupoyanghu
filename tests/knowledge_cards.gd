@@ -69,7 +69,7 @@ func _ready() -> void:
 	# 未收集统一的「未知」卡面（assets/art/knowledge/kd-11.png）：图里自带「未知 / ？ / UNKNOW」，
 	# 所以代码不再往上写「？」和「未收集」，也不额外压灰。
 	await capture("knowledge-locked-grid")
-	game._show_knowledge_detail(game.knowledge_grid.get_child(8), "geo_poyang")
+	game._show_knowledge_detail(game.knowledge_grid.get_child(Knowledge.all_ids().find("geo_poyang")), "geo_poyang")
 	check(game.knowledge_detail_title.text == "？？？", "Locked card title stays hidden")
 	check(not "source_url" in game.knowledge_detail_body.text and not "https://" in game.knowledge_detail_body.text, "Locked card sources stay hidden")
 	game._close_knowledge_detail()
@@ -86,6 +86,10 @@ func _ready() -> void:
 	await settle(1.8)
 	check(game.knowledge_count_label.text == "已收集 41 / 41", "Full collection count is correct")
 	var egg_view: Control = game.knowledge_grid.get_child(Knowledge.all_ids().find("egg_dixinhu"))
+	# 按类别重排后彩蛋在末尾，先滚到可见区域再检查实际像素。
+	var gallery_scroll: ScrollContainer = game.knowledge_grid.get_parent().get_parent()
+	gallery_scroll.ensure_control_visible(egg_view)
+	await settle(0.5)
 	await check_foil_render(egg_view, "Gallery egg")
 	await capture("knowledge-dixinhu-gallery-fixed")
 	game._show_knowledge_detail(egg_view, "egg_dixinhu")
@@ -93,6 +97,7 @@ func _ready() -> void:
 	await check_foil_render(game._knowledge_big_card, "Detail egg")
 	await capture("knowledge-dixinhu-detail-fixed")
 	game._close_knowledge_detail()
+	gallery_scroll.scroll_vertical = 0
 	for i in Knowledge.all_ids().size():
 		var kid: String = Knowledge.all_ids()[i]
 		var view: Control = game.knowledge_grid.get_child(i)
@@ -112,7 +117,7 @@ func _ready() -> void:
 	for window_size in [Vector2i(1280, 720), Vector2i(960, 540)]:
 		get_window().size = window_size
 		await settle(0.4)
-		game._show_knowledge_detail(game.knowledge_grid.get_child(32), "protect_scientific_release")
+		game._show_knowledge_detail(game.knowledge_grid.get_child(Knowledge.all_ids().find("protect_scientific_release")), "protect_scientific_release")
 		await settle(2.6)
 		var bounds := get_viewport().get_visible_rect()
 		check(bounds.encloses(game._knowledge_big_card.get_global_rect()), "Enlarged card must fit window")
@@ -121,7 +126,7 @@ func _ready() -> void:
 		check(game.knowledge_detail_body.scroll_active, "Long details need scrolling")
 		await capture("knowledge-detail-%d" % window_size.x)
 		game._close_knowledge_detail()
-	game._show_knowledge_detail(game.knowledge_grid.get_child(26), "mech_wetland_carbon")
+	game._show_knowledge_detail(game.knowledge_grid.get_child(Knowledge.all_ids().find("mech_wetland_carbon")), "mech_wetland_carbon")
 	check("初中拓展" in game.knowledge_detail_body.text, "Carbon card carries age-level label")
 	await settle(2.6)
 	await capture("knowledge-carbon-small")

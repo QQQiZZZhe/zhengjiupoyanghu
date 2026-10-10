@@ -104,7 +104,7 @@ func _ready() -> void:
 	var cbody: String = plain_bb(game.metric_tip_body.text).replace("\n", " / ")
 	print("TOOLTIP_COMMUNITY " + cbody)
 	check(game.metric_tip.visible, "社区信任的悬停小窗应可见")
-	check(cbody.contains("自然演化（含洪旱联动）   -2"),
+	check(cbody.contains("自然演化（含洪旱）   -2"),
 		"自然演化那一栏应把这笔扣减算进去（显示在同一处），实际「" + cbody + "」")
 	check(cbody.contains("· 其中人鸟矛盾 −2"), "小窗应有一行安静的来源小计，实际「" + cbody + "」")
 	check(cbody.contains("回合末约   53"), "回合末约应把这一笔算进去（55−2=53），实际「" + cbody + "」")
@@ -141,7 +141,7 @@ func _ready() -> void:
 	game.set_process(true)
 	await _set_metrics({"water_level": 55, "vegetation": 60, "water_quality": 60, "fish": 55, "birds": 45, "community": 60})
 	print("BANNER_SAFE " + game.event_label.text)
-	check(game.event_label.text.contains("暂无异常"), "水位 55（春 49–61 区间内）应描述成暂无异常，实际「" + game.event_label.text + "」")
+	check(game.event_label.text.contains("暂未触发明显洪旱预警或候鸟进田情况"), "水位 55（春 49–61 区间内）应显示没有明显洪旱预警或候鸟进田，实际「" + game.event_label.text + "」")
 	await capture("0.1.17-顶部态势-平稳")
 
 	# ⑥ 第 15 回合：横幅必须是收官那句（同样按反馈要求放在事件幅里）
@@ -151,6 +151,26 @@ func _ready() -> void:
 	check(game.event_label.text.contains("【收官】") and game.event_label.text.contains("准备验收最终成果"),
 		"第 15 回合横幅应是收官台词，实际「" + game.event_label.text + "」")
 	await capture("0.1.17-事件幅-收官")
+
+	game.set_process(false)
+	game._banner_override = "【自然预警】上游持续降雨，水文站预计湖区水位快速上涨，有洪水风险。请及时检查水位、植被和社区情况，安排本回合的行动。".repeat(3)
+	game._refresh_event_banner()
+	await settle()
+	check(game.event_label.get_line_count() > 1, "长横幅自动换行")
+	check(game.event_label.text_overrun_behavior == TextServer.OVERRUN_NO_TRIMMING, "横幅不生成省略号")
+	check(game.staged_board.get_global_rect().position.y >= game.event_label.get_global_rect().end.y + 8, "待执行框位于完整横幅下方")
+	GameState.record_crisis_notice(GameState.CRISES[0], 1)
+	game._refresh_warn_bar()
+	await settle()
+	check(game.warn_bar.get_parent() == game.bottom_right, "回顾按钮移入右下操作区")
+	check(game.warn_bar.get_index() < game.hand_sort_btn.get_index(), "回顾按钮位于排序上方")
+	for metric in game.metric_bars:
+		game._update_metric_tip(game.metric_bars[metric].row.get_global_rect().get_center())
+		await settle(0.15)
+		var rect: Rect2 = game.metric_tip.get_global_rect()
+		check(rect.size.x <= 245, "指标详情宽度收紧：" + metric)
+		check(not rect.intersects(game.staged_board.get_global_rect()), "指标详情避开待执行框：" + metric)
+	await capture("ui-compact-layout")
 
 	print("SITUATION_HUD checks=%d failures=%d" % [checks, failures.size()])
 	for f in failures:

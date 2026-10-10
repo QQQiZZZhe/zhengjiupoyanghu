@@ -3,5 +3,5 @@ shader_type canvas_item;
 
 void fragment() {
 	vec2 card_uv = rigid_uv.xy / rigid_uv.z;
-	COLOR = texture(TEXTURE, card_uv) * rigid_tint;
+	COLOR = card_burn(texture(TEXTURE, card_uv) * rigid_tint);
 }

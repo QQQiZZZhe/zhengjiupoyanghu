@@ -72,7 +72,7 @@ func verify_face(panel: PanelContainer, title: String, footer: String, dixinhu: 
 				unchanged = unchanged and (title_region.has_point(Vector2i(x, y)) or cost_region.has_point(Vector2i(x, y)))
 				if pixel == Color8(150, 150, 150):
 					shadows += 1
-					shadow_offset_correct = shadow_offset_correct and image.get_pixel(x - glyph_scale, y - glyph_scale) in [Color.BLACK, Color("35482d")]
+					shadow_offset_correct = shadow_offset_correct and image.get_pixel(x - glyph_scale, y - glyph_scale) in [Color.BLACK, PixelArt.COST_INK]
 	check(unchanged, "Every pixel outside text and shadow remains original")
 	check(shadows > 0, "Shadow is exactly RGB 150,150,150")
 	check(shadow_offset_correct, "Every shadow pixel is one source pixel below/right of ink")
@@ -117,14 +117,14 @@ func _ready() -> void:
 	var info: Dictionary = game.card_infos[0]
 	var card: Dictionary = game._card_dict(info.card_id)
 	game._set_play_tier("basic", false)
-	game._toggle_card(info.panel)
+	preload("res://tests/card_input.gd").drop_on_board(game, info)
 	check(info.selected and info.tier == "basic", "Selection and tier locking work")
 	await settle(2.1)
 	game._set_play_tier("deep", false)
 	check(info.tier == "basic", "Changing lever preserves selected card price")
 	check(info.panel.get_meta("pixel_face").texture == PixelArt.texture(card.name,
 		str(GameState.tier_cost(card.id, "basic"))), "Locked bitmap price stays correct")
-	game._toggle_card(info.panel)
+	preload("res://tests/card_input.gd").retract(game, info)
 	check(info.panel.get_meta("pixel_face").texture == PixelArt.texture(card.name,
 		str(GameState.tier_cost(card.id, "deep"))), "Deselection refreshes bitmap price")
 	await capture("pixel-cards-hand")

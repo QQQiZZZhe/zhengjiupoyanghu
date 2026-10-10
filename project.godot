@@ -10,8 +10,12 @@ config_version=5
 
 [application]
 
-config/name="保卫鄱阳湖"
+config/name="鄱阳归翎-生态修复手记"
+; Keep the existing Windows player profile after the display-name change.
+config/use_custom_user_dir.windows=true
+config/custom_user_dir_name.windows="Godot/app_userdata/保卫鄱阳湖"
 run/main_scene="res://scenes/main.tscn"
+run/max_fps=120
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/icon="res://icon.svg"
 
@@ -36,7 +40,7 @@ window/size/min_height=540
 
 [dotnet]
 
-project/assembly_name="保卫鄱阳湖"
+project/assembly_name="鄱阳归翎-生态修复手记"
 
 [editor_plugins]
 

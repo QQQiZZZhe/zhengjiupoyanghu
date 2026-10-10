@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>鄱阳归翎-生态修复手记 · 连续动效预览</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,"Microsoft YaHei",sans-serif;color:#f5ecd8;background:#182a2f}*{box-sizing:border-box}body{margin:0;padding:28px}header,main,footer{max-width:1120px;margin:auto}h1{font-size:24px;margin:0 0 8px}p{color:#acc9ce;font-size:14px;margin:8px 0 22px}.stage{border:1px solid #91a397;border-radius:12px;overflow:hidden;background:#44565c}canvas{display:block;width:100%;aspect-ratio:16/9}.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:18px 0}button,select{font:inherit;background:#44565c;color:#f5ecd8;border:1px solid #91a397;border-radius:6px;padding:8px 16px;cursor:pointer}button:hover{background:#526e86}input[type=range]{flex:1;min-width:180px;accent-color:#edc68a}output{font-variant-numeric:tabular-nums;min-width:72px}.beat{color:#edc68a;font-size:14px}.error{color:#ffbbac}footer{font-size:12px;color:#91a397;line-height:1.8}a{color:#c7dcae}
+</style>
+<header><h1>鄱阳归翎-生态修复手记 · 连续动效预览</h1><p>同一张卡从手牌进入详情，再回到手中，排序、出牌，最后把效果传递给湖区指标。</p></header>
+<main><div class="stage"><canvas id="film" width="1280" height="720" aria-label="连续卡牌动效预览"></canvas></div>
+<div class="controls"><button id="play">播放</button><button id="reset">重播</button><input id="time" type="range" min="0" max="8.2" step="0.01" value="0" aria-label="时间轴"><output id="clock">0.00 s</output><select id="speed" aria-label="播放速度"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option></select></div><p class="beat" id="beat">静止 · 等待操作</p><p class="error" id="error" hidden></p></main>
+<footer>独立开发预览：真实 GSAP 时间轴；游戏运行时使用 Godot 原生 Tween。二者共享 <code>assets/motion/profiles.json</code> 的曲线名称和时长。预览使用游戏现有卡面、湿地资源与 onetake 的确定性接触反馈。<br><a href="../../docs/MOTION.md">动效适配说明</a> · <a href="vendor/GSAP-LICENSE.txt">GSAP 许可</a> · <a href="vendor/ONETAKE-LICENSE.txt">onetake 非商业许可（预览库）</a></footer>
+<script src="vendor/gsap.min.js"></script><script src="vendor/onetake-motion.js"></script><script src="preview.js"></script>
+</html>

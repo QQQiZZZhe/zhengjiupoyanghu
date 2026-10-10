@@ -1,4 +1,5 @@
 // One planar rotation/projection for the card face, frame and foil.
+#include "res://scripts/card_burn.gdshaderinc"
 uniform float tilt_x = 0.0;
 uniform float tilt_y = 0.0;
 uniform vec2 card_center = vec2(0.0);
@@ -9,6 +10,8 @@ varying vec4 rigid_tint;
 void vertex() {
 	mat4 m = MODEL_MATRIX;
 	vec2 c = ((m * vec4(VERTEX, 0.0, 1.0)).xy - card_center) * poke_scale;
+	// All child items use the same canvas-space noise, including borders and ink.
+	burn_uv = c / max(dissolve_extent, vec2(1.0)) + vec2(0.5);
 	float cy = cos(tilt_y);
 	float sy = sin(tilt_y);
 	float cx = cos(tilt_x);

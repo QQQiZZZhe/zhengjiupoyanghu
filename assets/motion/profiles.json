@@ -1,0 +1,14 @@
+{
+  "response": {"ease": "power2.out", "duration": 0.16},
+  "enter": {"ease": "expo.out", "duration": 0.28, "stagger": 0.03},
+  "carry": {"ease": "power2.inOut", "duration": 0.40},
+  "return": {"ease": "power2.inOut", "duration": 0.22},
+  "gather": {"ease": "power2.in", "duration": 0.24, "stagger": 0.016},
+  "deal": {"ease": "expo.out", "duration": 0.28, "stagger": 0.04},
+  "camera": {"ease": "sine.inOut", "duration": 0.80},
+  "focus": {"ease": "sine.inOut", "duration": 0.28},
+  "arrival": {"ease": "back.out", "duration": 0.24},
+  "exit": {"ease": "power2.in", "duration": 0.22},
+  "pulse": {"ease": "sine.inOut", "duration": 0.60},
+  "linear": {"ease": "none", "duration": 0.40}
+}

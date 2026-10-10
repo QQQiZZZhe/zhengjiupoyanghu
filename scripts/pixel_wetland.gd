@@ -1,5 +1,20 @@
 extends Control
+
+const Motion = preload("res://scripts/motion.gd")
+const MotionWeb = preload("res://scripts/motion_web.gd")
 const VisualTheme := preload("res://scripts/visual_theme.gd")
+var scenery_atlas := preload("res://scripts/scenery_atlas.gd").new()
+
+func _atlas_texture(source: Texture2D) -> Texture2D:
+	return scenery_atlas.texture(source)
+
+func _build_scenery_atlas() -> void:
+	var sources: Array = []
+	for group in [sprites, bird_sprites, BIRD_ACTIONS, HOUSE_ART, prop_textures, pine_seasons, seasonal_trees]:
+		sources.append_array(group)
+	for frames in tree_frames: sources.append_array(frames)
+	sources.append_array([FLOATING_ISLAND, COMMUNITY_CAR])
+	scenery_atlas.build(sources)
 ## Orthographic 45-degree wetland view, with upright scenery and wildlife.
 ## All decorative placement is deterministic; never consume gameplay RNG.
 const LANDSCAPE := preload("res://assets/art/poyang-terrain-base.png")
@@ -24,6 +39,9 @@ const VIEW_AZIMUTH := 0.0
 const VIEW_PITCH := PI / 4.0
 const GROUND_SIZE := 100.0
 const BIRD_DISPLAY_SCALE := 0.65
+const BIRD_PERCH_BODY := [0.56, 0.54, 0.60, 0.59, 0.65]
+const BOAT_BIRD_CLEARANCE := Vector2(44, 40)
+var _perch_heights: Dictionary = {}
 const RiverRoutes := preload("res://scripts/wetland_rivers.gd")
 const CREEPER_ART := preload("res://assets/creeper.png")
 # Peripheral grass: within the menu view, beyond the closer gameplay view.
@@ -37,6 +55,10 @@ const HOUSE_ART := [
 	preload("res://assets/houses/house4.png"),
 ]
 ## 房子贴图被画进 76×76 的方框、锚点纵向在 0.86 —— 必须和 _draw_houses 的绘制一致。
+const COMMUNITY_CAR := preload("res://assets/houses/community-car.png")
+const CAR_COMMUNITY_THRESHOLD := 75
+const CAR_HOUSE_INDEX := 11
+const CAR_EXTENT := Vector2(44, 31)
 const HOUSE_BOX := 76.0
 const HOUSE_ANCHOR_Y := 0.86
 ## 影子按对象分开关。反馈历史：先"太诡异，把影子都删掉" → 再"船不加影子，建筑物加回来"。
@@ -130,12 +152,14 @@ var camera_zoom_factor := GAME_CAMERA_ZOOM
 var camera_tween: Tween
 var hand_view_tween: Tween
 var hand_view_state := Vector2(0.0, 1.0)
+var _hand_view_target := Vector2(0.0, 1.0)
 var _screen_projection := Transform2D.IDENTITY
 var _shadow_projection := Transform2D.IDENTITY
 var _overlay_inverse := Transform2D.IDENTITY
 var _shadow_unit_rings: Dictionary = {}
 var _static_items: Array[Dictionary] = []
 var _static_key: Array = []
+var _scenery_revision := 0
 var _shadow_key: Array = []
 var _relief_values := PackedFloat32Array()
 var _relief_cache: Dictionary = {}
@@ -168,9 +192,15 @@ var easter_rng := RandomNumberGenerator.new()
 var visual_seed := -1
 var plant_sites: Dictionary = {}
 var bird_agents: Array[Dictionary] = []
+const MAX_INTERESTS := 4
+var interests: Array[Dictionary] = []
+var interest_cooldown := 0.0
+var interest_captures := 0
 var house_sites: Array[Vector2] = []
 var house_progress: Array[float] = []
 var house_target_count := 0
+var car_site := Vector2.ZERO
+var car_progress := 0.0
 var yangtze_route: Array[Vector2] = []
 var gan_route: Array[Vector2] = []
 var scenery_props: Array[Dictionary] = []
@@ -204,9 +234,11 @@ func _ready() -> void:
 	shore_image = SHORE_DISTANCE.get_image()
 	_build_river_routes()
 	_make_house_sites()
+	_make_car_site()
 	_measure_house_art()
 	_build_exterior_seasons()
 	_build_meadow_scenery()
+	_build_scenery_atlas()
 	_build_land_relief()
 	easter_rng.randomize()
 	var land_margin := ColorRect.new()
@@ -399,8 +431,7 @@ func set_menu_camera(far: bool, menu_zoom: float = 1.3) -> void:
 		_set_camera_zoom(target)
 		return
 	# Retarget from the current pose, including interrupted transitions.
-	camera_tween = create_tween()
-	camera_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	camera_tween = Motion.tween(self, "camera", "camera")
 	camera_tween.tween_method(_set_camera_zoom, camera_zoom_factor, menu_zoom if far else GAME_CAMERA_ZOOM, 1.2 if far else 0.8)
 
 func _set_camera_zoom(value: float) -> void:
@@ -409,12 +440,13 @@ func _set_camera_zoom(value: float) -> void:
 
 func set_hand_view(focus_fraction: float, zoom_multiplier: float, animate: bool = true) -> void:
 	var target := Vector2(focus_fraction, zoom_multiplier)
+	if animate and target.is_equal_approx(_hand_view_target): return
+	_hand_view_target = target
 	if hand_view_tween and hand_view_tween.is_valid(): hand_view_tween.kill()
 	if not animate or reduced_motion:
 		_set_hand_view_state(target)
 		return
-	hand_view_tween = create_tween()
-	hand_view_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	hand_view_tween = Motion.tween(self, "focus", "hand_focus")
 	hand_view_tween.tween_method(_set_hand_view_state, hand_view_state, target, 0.28)
 
 func _set_hand_view_state(value: Vector2) -> void:
@@ -535,11 +567,83 @@ func _process(delta: float) -> void:
 		if action_effects[i]["age"] >= action_effects[i]["duration"]: action_effects.remove_at(i)
 	if not reduced_motion:
 		elapsed += delta
+		interest_cooldown = maxf(0.0, interest_cooldown - delta)
+		for interest in interests: interest.age += delta
 		_process_birds(delta)
+		for i in range(interests.size() - 1, -1, -1):
+			if interests[i].age >= 4.0 or interests[i].caught: interests.remove_at(i)
+	else:
+		interests.clear()
 	for i in house_progress.size():
 		var target := 1.0 if i < house_target_count else 0.0
 		house_progress[i] = target if reduced_motion else move_toward(house_progress[i], target, delta * (1.8 if target > house_progress[i] else 2.2))
+	var car_target := 1.0 if _community_car_visible() else 0.0
+	car_progress = car_target if reduced_motion else move_toward(car_progress, car_target, delta * 1.8)
 	_redraw_scenery()
+
+## Actual lake gestures drive scenery, never gameplay funds/populations/RNG.
+func _input(event: InputEvent) -> void:
+	if reduced_motion or not is_processing() or MotionWeb.paused(self): return
+	var clicked: bool = event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+	var swept: bool = event is InputEventMouseMotion and event.relative.length() >= 12.0
+	if not clicked and not swept: return
+	var host := get_tree().get_first_node_in_group("motion_host")
+	if host:
+		if host._intro_playing or host._deck_open or host.knowledge_viewer.visible or host.popup_root.visible or host.crisis_root.visible: return
+		if host.menu_root.visible and not host.menu_col.visible: return
+	var hovered := get_viewport().gui_get_hovered_control()
+	while hovered:
+		if hovered is Button or hovered is PanelContainer or hovered is ScrollContainer or hovered is LineEdit: return
+		hovered = hovered.get_parent_control()
+	var local: Vector2 = get_global_transform().affine_inverse() * event.position
+	if not Rect2(Vector2.ZERO, size).has_point(local): return
+	var uv := _screen_projection.affine_inverse() * local
+	_emit_interest(uv)
+
+func _emit_interest(uv: Vector2) -> bool:
+	if reduced_motion or interest_cooldown > 0.0 or interests.size() >= MAX_INTERESTS: return false
+	if not Rect2(Vector2.ZERO, Vector2.ONE).has_point(uv) or not _is_water(uv) or _bird_boat_space(uv).length_squared() < 1.0: return false
+	interests.append({"pos": uv, "age": 0.0, "caught": false})
+	interest_cooldown = 0.8
+	return true
+
+## ink-crowd / lyre-crows: acceleration-limited response with a finite consequence.
+func _follow_interest(bird: Dictionary, delta: float) -> bool:
+	var pos: Vector2 = bird.pos
+	var selected: Dictionary = {}
+	var best := 0.12 * 0.12
+	if int(bird.state) not in [3, 4, 5]:
+		for interest in interests:
+			var gap := pos.distance_squared_to(interest.pos)
+			if not interest.caught and gap < best and _is_water((pos + interest.pos) * 0.5):
+				selected = interest
+				best = gap
+	if selected.is_empty():
+		bird["motion_hunting"] = false
+		bird["motion_velocity"] = Vector2.ZERO
+		return false
+	bird["motion_hunting"] = true
+	if best < 0.006 * 0.006:
+		selected.caught = true
+		interest_captures += 1
+		bird.state = 1
+		bird.timer = 2.2
+		bird["motion_response_age"] = 1.0
+		bird["animation_age"] = 0.0
+		bird["motion_velocity"] = Vector2.ZERO
+		return true
+	var waypoint := _bird_water_waypoint(bird, selected.pos)
+	var velocity := MotionWeb.steer(bird.get("motion_velocity", Vector2.ZERO), waypoint - pos, delta, 0.035, 0.12)
+	var next := pos + velocity * delta
+	if not _bird_water_segment_clear(pos, next):
+		bird["motion_velocity"] = Vector2.ZERO
+		bird["motion_hunting"] = false
+		return false
+	bird["motion_velocity"] = velocity
+	bird.pos = next
+	bird.angle = velocity.angle()
+	bird.state = 2
+	return true
 
 func _redraw_scenery() -> void:
 	if not has_node("Wildlife"): return
@@ -616,10 +720,26 @@ func _ground_position(uv: Vector2) -> Vector3:
 	return Vector3((uv.x - 0.5) * GROUND_SIZE, 0.0, (uv.y - 0.5) * GROUND_SIZE)
 
 func _bird_facing(bird: Dictionary) -> float:
-	# Heading is stored in map coordinates; facing must follow screen motion.
-	var direction := Vector2.from_angle(float(bird["angle"]))
-	var screen_direction := (_screen_projection.x * direction.x + _screen_projection.y * direction.y) * 0.01
-	return -1.0 if screen_direction.x < -0.0001 else 1.0
+	return float(bird.get("facing", 1.0))
+
+func _update_bird_facing(bird: Dictionary, displacement: Vector2, delta: float) -> void:
+	# Near-vertical movement and brief steering corrections retain the last facing.
+	var screen_motion := _screen_projection.basis_xform(displacement)
+	if screen_motion.length_squared() < 0.00000001 or absf(screen_motion.x) < screen_motion.length() * 0.16:
+		bird["facing_age"] = 0.0
+		return
+	var desired := -1.0 if screen_motion.x < 0.0 else 1.0
+	if desired == _bird_facing(bird):
+		bird["facing_age"] = 0.0
+		return
+	if desired != float(bird.get("facing_candidate", 0.0)):
+		bird["facing_age"] = 0.0
+		bird["facing_candidate"] = desired
+	var age := float(bird.get("facing_age", 0.0)) + delta
+	bird["facing_age"] = age
+	if age >= 0.12:
+		bird["facing"] = desired
+		bird["facing_age"] = 0.0
 
 func _terrain_color(uv: Vector2) -> Color:
 	if uv.x < 0.0 or uv.x > 1.0 or uv.y < 0.0 or uv.y > 1.0: return LAND_COLOR
@@ -655,6 +775,7 @@ func _near_water(uv: Vector2, baseline: bool = false) -> bool:
 	return false
 
 func _make_house_sites() -> void:
+	_scenery_revision += 1
 	# Sample land immediately beside water, then pick evenly spaced points all
 	# around the actual shoreline. The choice is map-dependent, not RNG-dependent.
 	var candidates: Array[Vector2] = []
@@ -689,6 +810,33 @@ func _make_house_sites() -> void:
 			house_sites.append(clockwise_sites[index])
 	house_progress.resize(house_sites.size())
 
+## 唯一停车位，靠社区增长后出现的房屋外侧，采样确保落在陆地。
+func _make_car_site() -> void:
+	_scenery_revision += 1
+	if house_sites.size() <= CAR_HOUSE_INDEX: return
+	var home := house_sites[CAR_HOUSE_INDEX]
+	var target := home + Vector2(0.038, 0.016)
+	var best := INF
+	for y in range(-5, 6):
+		for x in range(-5, 6):
+			var candidate := home + Vector2(x, y) * 0.01
+			if not _is_land(candidate) or home.distance_to(candidate) < 0.035 or home.distance_to(candidate) > 0.06: continue
+			var clear := true
+			for other in house_sites:
+				if other.distance_to(candidate) < 0.033: clear = false
+			if clear and candidate.distance_to(target) < best:
+				best = candidate.distance_to(target)
+				car_site = candidate
+
+func _community_car_visible() -> bool:
+	return car_site != Vector2.ZERO and int(metrics.get("community", 0)) >= CAR_COMMUNITY_THRESHOLD and house_target_count > CAR_HOUSE_INDEX
+
+func _draw_community_car(c: Control) -> void:
+	if car_progress <= 0.01: return
+	var p := _wildlife_point(car_site)
+	var extent := CAR_EXTENT
+	c.draw_texture_rect(_atlas_texture(COMMUNITY_CAR), Rect2((p - extent * Vector2(0.5, 0.88)).round(), extent), false, Color(1, 1, 1, car_progress))
+
 func sync_community_targets() -> void:
 	# 社区指数决定可见村落规模，使用全部环湖位置；不再由围垦强度决定栋数。
 	house_target_count = _community_house_count()
@@ -700,7 +848,9 @@ func _accept_habitat(kind: String, uv: Vector2) -> bool:
 	# Seeded placement uses the original geography, independent of the previous
 	# run's animated water level. Movement uses the current, changing shoreline.
 	match kind:
-		"bird", "submerged", "floating":
+		"bird":
+			return _is_water(uv, true) and _bird_boat_space(uv).length_squared() >= 1.2 * 1.2
+		"submerged", "floating":
 			return _is_water(uv, true)
 		"emergent", "marsh":
 			return _is_shore(uv) or (_is_land(uv, true) and _near_water(uv, true))
@@ -728,15 +878,22 @@ func _scatter_site(kind: String, placed: Array[Vector2]) -> Vector2:
 	if kind == "tree":
 		return Vector2(0.80, 0.55 + 0.018 * placed.size())
 	if kind == "bird" or kind == "floating" or kind == "submerged":
-		return WATER_ANCHORS[placed.size() % WATER_ANCHORS.size()]
+		for i in WATER_ANCHORS.size():
+			var anchor := WATER_ANCHORS[(placed.size() + i) % WATER_ANCHORS.size()]
+			if _accept_habitat(kind, anchor): return anchor
+		return Vector2(0.43, 0.63)
 	return SHORE_ANCHORS[placed.size() % SHORE_ANCHORS.size()]
 
 func _reset_scenery() -> void:
+	_scenery_revision += 1
 	visual_seed = GameState.run_seed
 	visual_rng.seed = int(GameState.run_seed) ^ 0x5EED5A7
 	for i in house_progress.size():
 		house_progress[i] = 1.0 if i < _community_house_count() else 0.0
 	action_effects.clear()
+	interests.clear()
+	interest_cooldown = 0.0
+	interest_captures = 0
 	plant_sites.clear()
 	for pid in GameState.PLANTS:
 		var kind: String = GameState.PLANTS[pid]["kind"]
@@ -757,6 +914,90 @@ func _visible_trees() -> Array:
 	var sites: Array = plant_sites.get("chishan", [])
 	var count := clampi(int(float(plants.get("chishan", 0)) / 7.0), 0, sites.size())
 	return sites.slice(0, count)
+
+## The obstacle follows the drawn lake boat, including its gentle lateral sway.
+## Work in the unzoomed billboard plane, so camera zoom cannot change clearance.
+func _bird_boat_space(uv: Vector2) -> Vector2:
+	var offset := _shadow_projection.basis_xform(uv - BOAT_ANCHOR)
+	return (offset - Vector2(round(sin(elapsed * 0.06) * 4), -14)) / BOAT_BIRD_CLEARANCE
+
+func _bird_boat_uv(point: Vector2) -> Vector2:
+	return BOAT_ANCHOR + _shadow_projection.affine_inverse().basis_xform(point * BOAT_BIRD_CLEARANCE + Vector2(round(sin(elapsed * 0.06) * 4), -14))
+
+func _bird_water_segment_clear(a: Vector2, b: Vector2) -> bool:
+	var nearest := Geometry2D.get_closest_point_to_segment(Vector2.ZERO, _bird_boat_space(a), _bird_boat_space(b))
+	if nearest.length_squared() < 1.0: return false
+	for fraction in [0.25, 0.5, 0.75, 1.0]:
+		if not _is_water(a.lerp(b, fraction)): return false
+	return true
+
+func _bird_water_route(start: Vector2, target: Vector2) -> Array[Vector2]:
+	var direct: Array[Vector2] = [target]
+	if _bird_water_segment_clear(start, target): return direct
+	var a := _bird_boat_space(start)
+	var b := _bird_boat_space(target)
+	if a.length_squared() < 1.0 or b.length_squared() < 1.0: return []
+	var angle := wrapf(b.angle() - a.angle(), -PI, PI)
+	for sweep in [angle, angle - TAU if angle > 0.0 else angle + TAU]:
+		var route: Array[Vector2] = []
+		var steps := maxi(1, ceili(absf(sweep) / (PI / 12.0)))
+		var previous := start
+		var clear := true
+		for i in steps + 1:
+			var point := _bird_boat_uv(Vector2.from_angle(a.angle() + sweep * float(i) / steps) * 1.2)
+			if not _bird_water_segment_clear(previous, point):
+				clear = false
+				break
+			route.append(point)
+			previous = point
+		if clear and _bird_water_segment_clear(previous, target):
+			route.append(target)
+			return route
+	return []
+
+func _bird_water_waypoint(bird: Dictionary, target: Vector2) -> Vector2:
+	var basis: Vector2 = Vector2(_shadow_projection.x.length(), _shadow_projection.y.length())
+	if bird.get("route_target", Vector2.INF) != target or bird.get("route_basis", Vector2.ZERO) != basis:
+		bird["water_route"] = _bird_water_route(bird.pos, target)
+		bird["route_target"] = target
+		bird["route_basis"] = basis
+	var route: Array = bird.get("water_route", [])
+	while not route.is_empty() and bird.pos.distance_to(route[0]) < 0.001:
+		route.pop_front()
+	return bird.pos if route.is_empty() else route[0]
+
+func _tree_perch_height(uv: Vector2) -> float:
+	var amount := _tree_season_blend(uv)
+	var texture: Texture2D = seasonal_trees[season]
+	if amount < 1.0 and (season == 3 or (season == 0 and previous_season == 3)):
+		texture = tree_frames[season][clampi(roundi(amount * 16), 0, 16)]
+	var key := texture.get_instance_id()
+	if not _perch_heights.has(key):
+		var image := texture.get_image()
+		if image.is_compressed(): image.decompress()
+		var crown := 8
+		for y in image.get_height():
+			var occupied := false
+			for x in range(16, 24):
+				if image.get_pixel(x, y).a > 0.5: occupied = true
+			if occupied:
+				crown = y
+				break
+		_perch_heights[key] = 44.0 * 0.9 - crown - 1.0
+	var index: int = plant_sites.get("chishan", []).find(uv)
+	var growth := _visual_weight("plants", "chishan", index, 7.0) if index >= 0 else 1.0
+	return float(_perch_heights[key]) * growth
+
+func _bird_height(bird: Dictionary) -> float:
+	var state := int(bird.state)
+	if state == 4: return _tree_perch_height(bird.pos)
+	if state not in [3, 5]: return 0.0
+	var start: Vector2 = bird.get("flight_start", bird.home)
+	var distance := maxf(0.001, start.distance_to(bird.target))
+	var fraction := smoothstep(0.0, 1.0, 1.0 - bird.pos.distance_to(bird.target) / distance)
+	var from_height := float(bird.get("flight_height", 6.0))
+	var to_height := _tree_perch_height(bird.target) if state == 3 else 6.0
+	return lerpf(from_height, to_height, fraction)
 
 func _bird_count(sid: String) -> int:
 	var count := _metric_bird_count(sid, metrics)
@@ -799,12 +1040,14 @@ func _choose_bird_state(bird: Dictionary) -> void:
 	if not trees.is_empty() and roll < perch_chance:
 		bird["state"] = 3 # Fly to a visible tree and rest there.
 		bird["target"] = trees[visual_rng.randi_range(0, trees.size() - 1)]
-	elif roll < 0.45:
+		bird["flight_start"] = bird.pos
+		bird["flight_height"] = 6.0
+	elif roll < 0.60:
 		bird["state"] = 0 # Stand in shallow water.
-		bird["timer"] = visual_rng.randf_range(1.0, 3.5)
-	elif roll < 0.78:
-		bird["state"] = 1 # Peck at the water.
-		bird["timer"] = visual_rng.randf_range(1.2, 2.6)
+		bird["timer"] = visual_rng.randf_range(2.5, 5.0)
+	elif roll < 0.78 and int(bird["state"]) != 1:
+		bird["state"] = 1 # One gentle sip, followed by an upright pause.
+		bird["timer"] = visual_rng.randf_range(2.2, 3.0)
 	else:
 		bird["state"] = 2 # Walk to a nearby water pixel.
 		bird["timer"] = visual_rng.randf_range(2.0, 4.5)
@@ -812,7 +1055,7 @@ func _choose_bird_state(bird: Dictionary) -> void:
 		bird["target"] = home
 		for attempt in 20:
 			var candidate := home + Vector2(visual_rng.randf_range(-0.045, 0.045), visual_rng.randf_range(-0.045, 0.045))
-			if _is_water(candidate) and _is_water((candidate + bird["pos"]) * 0.5):
+			if _is_water(candidate) and _bird_boat_space(candidate).length_squared() >= 1.0:
 				bird["target"] = candidate
 				break
 
@@ -823,7 +1066,10 @@ func _process_birds(delta: float) -> void:
 		var state: int = bird["state"]
 		var pos: Vector2 = bird["pos"]
 		var target: Vector2 = bird["target"]
-		if state == 3 or state == 5:
+		bird["motion_response_age"] = minf(1.0, float(bird.get("motion_response_age", 1.0)) + delta)
+		if _follow_interest(bird, delta):
+			pass
+		elif state == 3 or state == 5:
 			var to_target := target - pos
 			var step := 0.14 * delta
 			if to_target.length() <= step:
@@ -836,22 +1082,27 @@ func _process_birds(delta: float) -> void:
 		elif state == 4:
 			bird["timer"] = float(bird["timer"]) - delta
 			if bird["timer"] <= 0.0 or _visible_trees().is_empty():
+				bird["flight_start"] = bird.pos
+				bird["flight_height"] = _tree_perch_height(bird.pos)
 				bird["state"] = 5 # Fly back before walking or pecking again.
 				bird["target"] = bird["home"]
 		else:
 			bird["timer"] = float(bird["timer"]) - delta
 			if state == 2:
-				var to_target := target - pos
+				var waypoint := _bird_water_waypoint(bird, target)
+				var to_target := waypoint - pos
 				var step := 0.018 * delta
-				if to_target.length() <= step:
-					bird["pos"] = target
+				var next := pos.move_toward(waypoint, step)
+				if _bird_water_segment_clear(pos, next): bird["pos"] = next
+				else: bird.erase("route_target")
+				if bird.pos.distance_to(target) < 0.001 or waypoint == pos:
 					bird["state"] = 0
 					bird["timer"] = visual_rng.randf_range(1.0, 3.0)
-				else:
-					bird["pos"] = pos + to_target.normalized() * step
+				elif to_target.length_squared() > 0.0:
 					bird["angle"] = to_target.angle()
 			if bird["timer"] <= 0.0:
 				_choose_bird_state(bird)
+		_update_bird_facing(bird, (bird["pos"] as Vector2) - pos, delta)
 		var animation_state := int(bird.get("animation_state", 0))
 		if animation_state != int(bird["state"]):
 			bird["animation_previous_state"] = animation_state
@@ -1003,7 +1254,7 @@ func _draw_fishing_boat(c: Control, p: Vector2, heading: float = 1.0, direction:
 		# Account for the artwork's diagonal bow; rotate around the hull, not its feet.
 		var mirror := -heading
 		c.draw_set_transform(p, _river_boat_rotation(direction, mirror), Vector2(mirror, 1.0))
-		c.draw_texture_rect(sprites[7], Rect2(-FISHING_BOAT_EXTENT * Vector2(0.5, 0.60), FISHING_BOAT_EXTENT), false)
+		c.draw_texture_rect(_atlas_texture(sprites[7]), Rect2(-FISHING_BOAT_EXTENT * Vector2(0.5, 0.60), FISHING_BOAT_EXTENT), false)
 	c.draw_set_transform(Vector2.ZERO)
 
 func _draw_yangtze_boats(c: Control) -> void:
@@ -1015,6 +1266,7 @@ func _draw_yangtze_boats(c: Control) -> void:
 		_draw_fishing_boat(c, p, sample["heading"], direction)
 
 func _build_meadow_scenery() -> void:
+	_scenery_revision += 1
 	# Original code-drawn pixel props: grass, flowers, shrubs, stones and pines.
 	var palette := {"d": Color("456244"), "g": Color("668650"), "l": Color("9bb364"),
 		"t": Color("73593e"), "r": Color("727b73"), "s": Color("a6ad97"),
@@ -1051,7 +1303,7 @@ func _build_meadow_scenery() -> void:
 	scenery_props.sort_custom(func(a: Dictionary, b: Dictionary): return a["pos"].x + a["pos"].y < b["pos"].x + b["pos"].y)
 
 func _scenery_draw_order() -> Array[Dictionary]:
-	var key: Array = [hash(scenery_props), hash(plant_sites), hash(summer_flowers), hash(house_sites),
+	var key: Array = [_scenery_revision,
 		displayed_plants.duplicate(), displayed_islands, _lake_offset(), season, previous_season, season_progress,
 		size if season_progress < 1.0 else Vector2.ZERO,
 		_screen_projection if season_progress < 1.0 else Transform2D.IDENTITY]
@@ -1067,24 +1319,12 @@ func _scenery_draw_order() -> Array[Dictionary]:
 		moving[i]["depth"] = _scenery_depth(moving[i]["uv"])
 		moving[i]["order"] = _static_items.size() + i
 	moving.sort_custom(_scenery_before)
-	# Merge already sorted fixed scenery with the small moving population.
-	# Insertion indices preserve the original equal-depth ordering.
-	var items: Array[Dictionary] = []
-	var i := 0
-	var j := 0
-	while i < _static_items.size() and j < moving.size():
-		if _scenery_before(_static_items[i], moving[j]):
-			items.append(_static_items[i])
-			i += 1
-		else:
-			items.append(moving[j])
-			j += 1
-	while i < _static_items.size():
-		items.append(_static_items[i])
-		i += 1
-	while j < moving.size():
-		items.append(moving[j])
-		j += 1
+	# Copy the fixed list in native code; insert the small moving population by
+	# binary search instead of traversing hundreds of static items in GDScript
+	# every frame. The same comparator preserves ties and occlusion order.
+	var items: Array[Dictionary] = _static_items.duplicate()
+	for item in moving:
+		items.insert(items.bsearch_custom(item, _scenery_before), item)
 	return items
 
 func _scenery_depth(uv: Vector2) -> float:
@@ -1115,6 +1355,7 @@ func _build_static_scenery() -> Array[Dictionary]:
 	for i in mini(ISLAND_ANCHORS.size(), ceili(displayed_islands)):
 		items.append({"kind": "island", "uv": ISLAND_ANCHORS[i], "index": i})
 	for i in house_sites.size(): items.append({"kind": "house", "uv": house_sites[i], "index": i})
+	if car_site != Vector2.ZERO: items.append({"kind": "community_car", "uv": car_site})
 	for i in items.size():
 		items[i]["depth"] = _scenery_depth(items[i]["uv"])
 		items[i]["order"] = i
@@ -1122,6 +1363,9 @@ func _build_static_scenery() -> Array[Dictionary]:
 	return items
 
 func _draw_wildlife(c: Control) -> void:
+	# In local camera coordinates, 96 px covers the largest sprite plus its
+	# seasonal leaves/sway. Offscreen items keep simulating and depth order.
+	var visible_rect: Rect2 = (c.get_global_transform().affine_inverse() * get_viewport_rect()).grow(96.0)
 	_draw_yangtze_boats(c)
 	for i in 28:
 		var uv: Vector2 = WATER_ANCHORS[i % WATER_ANCHORS.size()]
@@ -1137,6 +1381,7 @@ func _draw_wildlife(c: Control) -> void:
 		_draw_sprite(c, p, 3, Vector2(15, 24), Color(0.6, 0.85, 0.8, 0.45 * _visual_weight("metrics", "fish", i, 12.0)))
 	for item in _render_items:
 		var p := _wildlife_point(item["uv"])
+		if not visible_rect.has_point(p): continue
 		match str(item["kind"]):
 			"prop":
 				var prop: Dictionary = item["prop"]
@@ -1148,14 +1393,15 @@ func _draw_wildlife(c: Control) -> void:
 					var rect := Rect2((p - extent * Vector2(0.5, 0.9)).round(), extent.round())
 					if prop["kind"] == 4:
 						var amount := _tree_season_blend(item["uv"])
-						c.draw_texture_rect(pine_seasons[previous_season], rect, false)
-						c.draw_texture_rect(texture, rect, false, Color(1, 1, 1, amount))
-					else: c.draw_texture_rect(texture, rect, false, _season_prop_tint(item["uv"]))
+						c.draw_texture_rect(_atlas_texture(pine_seasons[previous_season]), rect, false)
+						c.draw_texture_rect(_atlas_texture(texture), rect, false, Color(1, 1, 1, amount))
+					else: c.draw_texture_rect(_atlas_texture(texture), rect, false, _season_prop_tint(item["uv"]))
 			"flower": _draw_summer_flower(c, p, item["uv"])
 			"tree": _draw_tree(c, p, 0.78, item["uv"])
 			"plant": _draw_plant(c, p, str(item["pid"]), float(item["growth"]), item["uv"])
 			"island": _draw_island(c, int(item["index"]))
 			"house": _draw_house(c, int(item["index"]))
+			"community_car": _draw_community_car(c)
 			"bird": _draw_bird_actor(c, item["bird"])
 			"boat":
 				p.x += round(sin(elapsed * 0.06) * 4)
@@ -1168,7 +1414,7 @@ func _draw_wildlife(c: Control) -> void:
 func _draw_plant(c: Control, p: Vector2, pid: String, growth: float, uv: Vector2 = Vector2.INF) -> void:
 	c.draw_set_transform(p, 0.0, Vector2.ONE * growth)
 	match pid:
-		"lian": c.draw_texture_rect(bird_sprites[5], Rect2(Vector2(-19, -21), Vector2(38, 38)), false)
+		"lian": c.draw_texture_rect(_atlas_texture(bird_sprites[5]), Rect2(Vector2(-19, -21), Vector2(38, 38)), false)
 		"luwei": _draw_sprite(c, Vector2.ZERO, 4, Vector2(36, 48))
 		"chishan": _draw_tree(c, Vector2.ZERO, 1.0, uv)
 		"kucao":
@@ -1184,9 +1430,15 @@ func _draw_island(c: Control, i: int) -> void:
 	if growth < 0.99: c.draw_arc(p, 9 + (1.0 - growth) * 15, 0, TAU, 16, Color(0.72, 0.93, 0.98, 1.0 - growth), 2.0)
 	var extent := Vector2(48, 48) * maxf(0.08, growth)
 	p.y += (1.0 - growth) * 14.0
-	c.draw_texture_rect(FLOATING_ISLAND, Rect2((p - extent * Vector2(0.5, 0.65)).round(), extent), false, Color(1, 1, 1, growth))
+	c.draw_texture_rect(_atlas_texture(FLOATING_ISLAND), Rect2((p - extent * Vector2(0.5, 0.65)).round(), extent), false, Color(1, 1, 1, growth))
 
 func _draw_action_effects(c: Control) -> void:
+	for interest in interests:
+		var age: float = interest.age
+		var p := _wildlife_point(interest.pos)
+		var alpha := maxf(0.0, 1.0 - age / 4.0) * 0.55
+		c.draw_arc(p, 5.0 + minf(age, 1.0) * 14.0, 0, TAU, 24, Color(0.73, 0.94, 1.0, alpha), 1.0, false)
+		if age < 0.6: c.draw_arc(p, 3.0 + age * 30.0, 0, TAU, 24, Color(0.78, 0.94, 0.62, alpha), 1.0, false)
 	for effect in action_effects:
 		var phase := float(effect.age) / float(effect.duration)
 		var alpha := sin(phase * PI) * 0.8
@@ -1315,8 +1567,40 @@ func _contact_shadow_specs(items: Array[Dictionary] = []) -> Array[Dictionary]:
 	return specs
 
 func _draw_contact_shadows(c: Control) -> void:
+	# The same translucent polygons, in the same order, share one mesh draw.
+	# Rebuild only when the existing shadow invalidation requests a redraw.
+	var vertices := PackedVector2Array()
+	var colors := PackedColorArray()
+	var indices := PackedInt32Array()
 	for spec in _render_shadow_specs:
-		_draw_shadow(c, spec["uv"], _px_to_uv(float(spec["radius"])), float(spec["alpha"]), float(spec["foot"]), str(spec["kind"]))
+		if not SHADOWS.get(str(spec.kind), false): continue
+		var uv: Vector2 = spec.uv
+		var radius := _px_to_uv(float(spec.radius))
+		if radius <= 0.0: continue
+		var pixel_radius := _shadow_point(uv + Vector2(radius, 0)).distance_to(_shadow_point(uv))
+		if pixel_radius < 1.0: continue
+		var alpha := float(spec.alpha) * clampf((pixel_radius - 1.0) / 3.0, 0.0, 1.0)
+		var offset := _wildlife_point(uv) - _shadow_point(uv) + Vector2(0.0, float(spec.foot))
+		for band in [[1.05, 0.18], [0.90, 0.32], [0.70, 0.45]]:
+			var points := Transform2D(0.0, offset) * _shadow_polygon(uv, radius * float(band[0]))
+			var start := vertices.size()
+			vertices.append_array(points)
+			var color := Color(0.08, 0.13, 0.11, alpha * float(band[1]))
+			for point in points: colors.append(color)
+			for i in range(1, points.size() - 1):
+				indices.append_array(PackedInt32Array([start, start + i, start + i + 1]))
+	if vertices.is_empty(): return
+	var arrays: Array = []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
+	# Canvas draw commands hold a RID, not a Resource reference. Each canvas
+	# retains its own mesh until its next redraw or destruction.
+	c.set_meta("contact_shadow_mesh", mesh)
+	c.draw_mesh(mesh, null)
 
 func _draw_houses(c: Control) -> void:
 	for i in house_sites.size(): _draw_house(c, i)
@@ -1344,7 +1628,7 @@ func _draw_house(c: Control, i: int) -> void:
 			c.draw_rect(Rect2((p + offset).round(), Vector2(3, 3)), Color("e4ce9b"))
 	var extent := Vector2(HOUSE_BOX, HOUSE_BOX) * sc
 	var tint := Color.WHITE if i < lit else Color(0.66, 0.63, 0.56)
-	c.draw_texture_rect(HOUSE_ART[art_index], Rect2((p - extent * Vector2(0.5, HOUSE_ANCHOR_Y)).round(), extent.round()), false, tint)
+	c.draw_texture_rect(_atlas_texture(HOUSE_ART[art_index]), Rect2((p - extent * Vector2(0.5, HOUSE_ANCHOR_Y)).round(), extent.round()), false, tint)
 	if phase < 0.22 and i >= house_target_count:
 		_draw_sprite(c, p + Vector2(7, 0), 4, Vector2(16, 23))
 
@@ -1360,12 +1644,12 @@ func _draw_tree(c: Control, p: Vector2, scale_factor: float = 1.0, _uv: Vector2 
 	var rect := Rect2((p - extent * Vector2(0.5, 0.9)).round(), extent.round())
 	var amount := _tree_season_blend(_uv)
 	if amount >= 1.0 or previous_season == season:
-		c.draw_texture_rect(seasonal_trees[season], rect, false)
+		c.draw_texture_rect(_atlas_texture(seasonal_trees[season]), rect, false)
 	elif season == 0 and previous_season == 3:
 		# Fixed leaf-cluster masks grow real opaque leaves instead of fading a crown.
-		c.draw_texture_rect(tree_frames[0][clampi(roundi(amount * 16), 0, 16)], rect, false)
+		c.draw_texture_rect(_atlas_texture(tree_frames[0][clampi(roundi(amount * 16), 0, 16)]), rect, false)
 	elif season == 3:
-		c.draw_texture_rect(tree_frames[3][clampi(roundi(amount * 16), 0, 16)], rect, false)
+		c.draw_texture_rect(_atlas_texture(tree_frames[3][clampi(roundi(amount * 16), 0, 16)]), rect, false)
 		if not reduced_motion and amount > 0.02 and amount < 0.98:
 			for i in 6:
 				var fall := fposmod(amount * 1.7 + float(i) / 6.0, 1.0)
@@ -1374,8 +1658,8 @@ func _draw_tree(c: Control, p: Vector2, scale_factor: float = 1.0, _uv: Vector2 
 				if not _creeper_weather_exclusion().has_point(world_leaf):
 					c.draw_rect(Rect2(leaf.round(), Vector2(2, 2) * scale_factor), Color("dbb074", 1.0 - fall))
 	else:
-		c.draw_texture_rect(seasonal_trees[previous_season], rect, false)
-		c.draw_texture_rect(seasonal_trees[season], rect, false, Color(1, 1, 1, amount))
+		c.draw_texture_rect(_atlas_texture(seasonal_trees[previous_season]), rect, false)
+		c.draw_texture_rect(_atlas_texture(seasonal_trees[season]), rect, false, Color(1, 1, 1, amount))
 
 func _draw_marsh(c: Control, p: Vector2, pid: String) -> void:
 	var color := Color("a8b86a") if pid == "lihao" else Color("81a26d")
@@ -1384,10 +1668,15 @@ func _draw_marsh(c: Control, p: Vector2, pid: String) -> void:
 	c.draw_rect(Rect2(p + Vector2(5, -1), Vector2(3, 7)), color)
 
 func _draw_sprite(c: Control, p: Vector2, index: int, extent: Vector2, tint: Color = Color.WHITE) -> void:
-	c.draw_texture_rect(sprites[index], Rect2((p - extent * Vector2(0.5, 0.85)).round(), extent), false, tint)
+	c.draw_texture_rect(_atlas_texture(sprites[index]), Rect2((p - extent * Vector2(0.5, 0.85)).round(), extent), false, tint)
 
 func _bird_animation_frame(bird: Dictionary) -> int:
 	var state: int = bird["state"]
+	if state == 4: return 13
+	var response_age := float(bird.get("motion_response_age", 1.0))
+	if not reduced_motion and response_age < 5.0 / 11.0:
+		# toy-flipbook: one fully visible atlas frame, held at 11 Hz, no dissolve.
+		return [0, 6, 6, 0, 0][mini(4, floori(response_age * 11.0))]
 	var age := float(bird.get("animation_age", 0.0))
 	var previous := int(bird.get("animation_previous_state", 0))
 	if not reduced_motion and age < 0.18:
@@ -1395,7 +1684,11 @@ func _bird_animation_frame(bird: Dictionary) -> int:
 		if previous == 3 or previous == 5: return 15 # Feet-down landing.
 	var tick := int(age * 7.0 + float(bird.get("slot", 0))) if not reduced_motion else 0
 	match state:
-		1: return 6 + tick % 3 # Bend, peck, lift.
+		1:
+			# Hold the shallower bend; omit the deep peck and exaggerated lift.
+			# No loop: the remaining state duration is an upright drinking pause.
+			if reduced_motion: return 0
+			return 6 if age >= 0.45 and age < 1.25 else 0
 		2: return 2 + tick % 4 # Four-step walking loop.
 		3, 5: return 9 + tick % 4 # Four-phase wingbeat.
 		4: return 13 # Folded wings while resting.
@@ -1411,22 +1704,31 @@ func _draw_bird_actor(c: Control, bird: Dictionary) -> void:
 	var sprite_index: int = SPECIES_ART.get(str(bird["sid"]), 0)
 	var state: int = bird["state"]
 	var p := _wildlife_point(bird["pos"])
+	var response_age := float(bird.get("motion_response_age", 1.0))
+	if not reduced_motion and response_age < 0.55:
+		var response_alpha := (1.0 - response_age / 0.55) * visibility
+		c.draw_arc(p + Vector2(0, -8), 5.0 + response_age * 8.0, -PI * 0.85, -PI * 0.15, 8, Color(0.78, 0.94, 0.62, response_alpha), 1.5, false)
 	var frame := _bird_animation_frame(bird)
-	if state == 3 or state == 5:
-		p.y -= 6.0 + round(sin(elapsed * 13.0) * 2.0)
-	elif state == 4:
-		p.y -= 5.0 + round(sin(elapsed * 4.0) * 1.0)
+	p.y -= _bird_height(bird)
 	var extent := (Vector2(46, 46) if sprite_index != 2 else Vector2(50, 50)) * BIRD_DISPLAY_SCALE
 	if state == 3 or state == 5:
 		extent *= 1.2
+	var region := _bird_frame_region(sprite_index, frame)
+	var anchor := Vector2(0.5, 0.875)
+	if state == 4:
+		# Crop the lower leg area without stretching the retained head/body pixels.
+		region.size.y = floor(region.size.y * BIRD_PERCH_BODY[sprite_index])
+		extent.y *= region.size.y / _bird_frame_region(sprite_index, frame).size.y
+		anchor.y = 1.0
 	# Billboard sprites remain upright: only mirror horizontally, never rotate.
 	# Anchor the feet to the habitat point instead of the middle of the body.
 	c.draw_set_transform(p, 0.0, Vector2(_bird_facing(bird), 1.0))
-	c.draw_texture_rect_region(BIRD_ACTIONS[sprite_index], Rect2(-extent * Vector2(0.5, 0.875), extent), _bird_frame_region(sprite_index, frame), Color(1, 1, 1, visibility))
+	c.draw_texture_rect_region(_atlas_texture(BIRD_ACTIONS[sprite_index]), Rect2(-extent * anchor, extent), region, Color(1, 1, 1, visibility))
 	c.draw_set_transform(Vector2.ZERO)
 
 ## Flood-fill from the map edges: isolated lake islands stay outside this mask.
 func _build_exterior_seasons() -> void:
+	_scenery_revision += 1
 	const N := 256
 	exterior_image = Image.create(N, N, false, Image.FORMAT_R8)
 	var open := PackedByteArray()

@@ -27,6 +27,20 @@ func _ready() -> void:
 	if game._intro_playing: game._finish_intro()
 	game.wetland.set_process(false)
 	var wetland = game.wetland
+	var bird := {"facing": 1.0}
+	var inverse_basis: Transform2D = wetland._screen_projection.affine_inverse()
+	for i in 1200:
+		var noise := Vector2(-0.001 if i % 2 == 0 else 0.001, 1.0)
+		wetland._update_bird_facing(bird, inverse_basis.basis_xform(noise), 1.0 / 120.0)
+		check(wetland._bird_facing(bird) == 1.0, "Vertical jitter flipped bird facing")
+	for fps in [30, 60, 120]:
+		bird = {"facing": 1.0}
+		for i in fps:
+			wetland._update_bird_facing(bird, inverse_basis.basis_xform(Vector2(-1, 0)), 1.0 / fps)
+		check(wetland._bird_facing(bird) == -1.0, "Sustained movement must turn bird at all frame rates")
+		for i in fps:
+			wetland._update_bird_facing(bird, Vector2.ZERO, 1.0 / fps)
+		check(wetland._bird_facing(bird) == -1.0, "Stationary bird must retain facing")
 	for route in [wetland.yangtze_route, wetland.gan_route]:
 		for i in 300:
 			var phase := float(i - 100) / 97.0

@@ -1,0 +1,9 @@
+2D dissolve with burn edge — mreliptik (March 12, 2024)
+Source: https://godotshaders.com/shader/2d-dissolve-with-burn-edge/
+Code released under CC0: https://creativecommons.org/publicdomain/zero/1.0/
+Adapted for shared card projection, complete transparency at endpoints,
+and consistent dissolution across card face, lettering and frame.
+No source artwork, fonts, videos or Balatro card images are included.
+
+Related Godot example: https://github.com/MrEliptik/godot_ui_components
+Its MIT license is preserved in godot-ui-components.txt.

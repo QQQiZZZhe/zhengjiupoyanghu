@@ -1,0 +1,9 @@
+GSAP 3.15.0
+Copyright GreenSock. Original copyright and licensing header is retained in gsap.min.js.
+
+Distributed under the GSAP Standard License:
+https://gsap.com/standard-license/
+
+Official source: https://github.com/greensock/GSAP
+Pinned distribution: https://cdn.jsdelivr.net/npm/gsap@3.15.0/dist/gsap.min.js
+This file identifies the upstream license; it does not replace the full terms at the URL above.

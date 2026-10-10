@@ -72,7 +72,7 @@ func _ready() -> void:
 	for i in range(ids.size() - 1):
 		Knowledge.unlock(ids[i])
 		check(not Achievements.is_unlocked("ecology_expert"), "Partial collection must not unlock ecology expert")
-	check(Knowledge.collected_count() == 39, "Boundary test reaches 39 / 40")
+	check(Knowledge.collected_count() == ids.size() - 1, "Boundary test reaches %d / %d" % [ids.size() - 1, ids.size()])
 	game._show_knowledge(ids.back())
 	check(Achievements.is_unlocked("ecology_expert"), "The final gameplay knowledge popup unlocks ecology expert")
 	check(notifications.count("ecology_expert") == 1, "Ecology expert announces exactly once")

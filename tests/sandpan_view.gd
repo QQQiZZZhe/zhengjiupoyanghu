@@ -88,15 +88,29 @@ func _ready() -> void:
 	get_window().size = Vector2i(1280, 720)
 	await settle()
 	game._set_play_tier("deep", false)
-	game._toggle_card(game.card_infos[0]["panel"])
-	await settle(0.3)
+	var selected: Dictionary = game.card_infos[0]
+	var before_play_focus: Vector2 = game.wetland.hand_view_state
+	var press: Vector2 = selected.panel.get_global_transform() * (selected.panel.size * 0.5)
+	game._card_press_panel = selected.panel
+	game._card_press_origin = press
+	game._start_card_drag()
+	game._update_card_drag_pose(press + Vector2(0, -28), Vector2.ZERO)
+	game._finish_card_pointer(press + Vector2(0, -28))
+	await settle(3.0)
+	check(selected.selected and selected.get("stage_zone", "") == "board", "Selected card must park before testing HUD visibility")
+	check(game.wetland.hand_view_state.is_equal_approx(before_play_focus), "Parking a card must not move map")
 	var expected_hand := hand_state()
 	var expected_metrics: Dictionary = GameState.metrics.duplicate()
 	var expected_funds: int = GameState.funds
+	var board_relative: Vector2 = selected.panel.global_position - game.staged_board.global_position
 	view.view_button.pressed.emit()
+	await settle(0.10)
+	check((selected.panel.global_position - game.staged_board.global_position).distance_to(board_relative) < 0.01, "Board and cards move right as one during collapse")
+	check(view.hud_layer.position.x > 0.0 and selected.panel.get_parent() == game.staged_board, "Board cards ride HUD instead of sliding down with hand")
 	await settle()
 	check(view.collapsed and not view.hand_layer.visible, "View mode must completely hide hand")
 	check(not view.hud_layer.visible, "Full view must hide every persistent HUD control")
+	check(not game.staged_board.is_visible_in_tree(), "Full view hides the wooden card board")
 	check(not game.left_panel.is_visible_in_tree() and not game.right_panel.is_visible_in_tree(), "Full view must hide metrics and status panels")
 	check(not game.bottom_right.is_visible_in_tree() and not game.tier_lever.is_visible_in_tree() and not game.deck_root.is_visible_in_tree(), "Full view must hide sorting, dispatch, refresh, execution, tiers and deck entry")
 	check(game.hand_sort_btn.disabled, "Full view must disable hand sorting")
@@ -118,6 +132,7 @@ func _ready() -> void:
 	check(hand_matches(expected_hand), "Opening deck changed selected cards")
 	view.toggle_view()
 	await settle(0.1)
+	check((selected.panel.global_position - game.staged_board.global_position).distance_to(board_relative) < 0.01, "Board and cards stay together during restore")
 	game._pause_game()
 	var paused_position: Vector2 = view.hand_layer.position
 	await settle(0.25)

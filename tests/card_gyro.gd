@@ -153,16 +153,28 @@ func check_tilt(card: Control, label: String) -> void:
 
 func probe_grid(grid: HFlowContainer, label: String) -> Control:
 	var card: Control = grid.get_child(0)
-	game._on_viewer_card_hover(card, {})
+	var gesture := InputEventMouseMotion.new()
+	gesture.position = game._card_gyro_center(card)
+	gesture.global_position = gesture.position
+	Input.parse_input_event(gesture)
+	Input.flush_buffered_events()
 	await settle(0.4)
 	game._kill_card_tweens(card)
 	var mouse: Vector2 = game._card_gyro_center(card) + Vector2(40, -30)
+	gesture = InputEventMouseMotion.new()
+	gesture.position = mouse
+	gesture.global_position = mouse
+	Input.parse_input_event(gesture)
+	Input.flush_buffered_events()
+	await get_tree().process_frame
+	check(game._deck_gyro_view == card, label + " responds to a real pointer over its rendered face")
 	for i in 24:
 		game._process_deck_gyro(0.05, mouse)
 	await capture(label)
 	check_tilt(card, label)
 	check(card.get_meta("panel") is PanelContainer, label + " uses original card primitives")
 	check(await card_pixels(card) > 100 or DisplayServer.get_name() == "headless", label + " has a rendered card face")
+	await settle(0.8) # Let pointer-hover springs reach rest before measuring idle drift.
 	var position_before: Vector2 = card.position
 	await settle(0.7)
 	check(card.position.is_equal_approx(position_before), label + " has no idle floating loop")
@@ -237,24 +249,276 @@ func _ready() -> void:
 	check(await card_pixels(hand) > 100 or DisplayServer.get_name() == "headless", "Hand rendering is nonblank")
 	game._set_play_tier("basic", false)
 	var basic_cost: String = info.cost_label.text
-	game._toggle_card(hand)
-	check(info.selected and info.tier == "basic", "Original hand card remains selectable")
-	check(hand.get_theme_stylebox("panel").border_color.is_equal_approx(game.VisualTheme.GOLD), "Selected card frame remains visible")
+	var table_drop: Vector2 = Vector2(game.card_box.global_position.x + game.card_box.size.x * 0.5,
+		game.card_box.global_position.y - 110.0)
+	game._card_press_panel = hand
+	game._start_card_drag()
+	game._update_card_drag_pose(table_drop, Vector2(0, -48))
+	game._finish_card_pointer(table_drop)
+	check(info.selected and info.get("staged_by_drag", false) and info.tier == "basic",
+		"Dragging a card onto the upper table stages it at the current tier")
+	check(not game._score_animating, "Staging never executes or settles the card")
+	check(hand.get_theme_stylebox("panel").border_color.is_equal_approx(game.VisualTheme.GOLD), "Staged card keeps the table-ready frame")
 	await settle(2.1)
 	game._set_play_tier("deep", false)
 	check(game.play_tier == "deep", "Lever switches after its real cooldown")
-	check(info.tier == "basic", "Selected card preserves its locked price tier")
-	game._toggle_card(hand)
-	check(info.cost_label.text != basic_cost, "Live card prices still refresh")
-	check(not info.selected, "Original hand card remains deselectable")
+	check(info.tier == "basic", "A staged card preserves its locked price tier")
+	var hand_drop: Vector2 = game.card_box.global_position + Vector2(game.card_box.size.x * 0.5, game.card_box.size.y * 0.6)
+	game._card_press_panel = hand
+	game._start_card_drag()
+	game._update_card_drag_pose(hand_drop, Vector2(0, 80))
+	game._finish_card_pointer(hand_drop)
+	check(not info.selected and not info.get("staged_by_drag", false), "Dragging a staged card back to the fan cancels it")
+	check(info.cost_label.text != basic_cost, "An unstaged hand card follows the new lever tier")
+	var click_panel: PanelContainer = game.card_infos[0].panel
+	var click_info: Dictionary = game.card_infos[0]
+	var click_press := InputEventMouseButton.new()
+	click_press.button_index = MOUSE_BUTTON_LEFT
+	click_press.pressed = true
+	game._on_card_gui_input(click_press, click_panel)
+	check(game._card_press_panel == click_panel, "Hand press begins a click-or-drag gesture")
+	game._finish_card_pointer(Vector2(-1000, -1000))
+	check(not click_info.selected, "Releasing outside the card does not stage it")
+	game._on_card_gui_input(click_press, click_panel)
+	game._finish_card_pointer(game._card_gyro_center(click_panel))
+	check(not click_info.selected, "A short left click no longer stages a card")
+	var drag_index: int = int(game.card_infos.size() / 2)
+	var drag_info: Dictionary = game.card_infos[drag_index]
+	var drag_panel: PanelContainer = drag_info.panel
+	var original_drag_pos: Vector2 = drag_panel.position
+	game._card_press_panel = drag_panel
+	game._start_card_drag()
+	check(game._card_dragging and drag_info.get("dragging", false), "Held hand card enters a dedicated drag state")
+	var drag_point: Vector2 = game.card_box.global_position + original_drag_pos + drag_panel.pivot_offset + Vector2(24, -18)
+	game._update_card_drag_pose(drag_point, Vector2(18, 0))
+	check(drag_panel.position.distance_to(original_drag_pos) > 5.0, "Dragged card follows the pointer with its grab point preserved")
+	var neighbor: Dictionary = game.card_infos[drag_index - 1]
+	check(game._card_drag_neighbor_offset(neighbor).x < -0.5, "Nearby cards yield away from the dragged card")
+	var inside_point: Vector2 = game._card_drag_mouse
+	for outside_point in [Vector2(inside_point.x, game.card_box.global_position.y - 1.0),
+		Vector2(game.card_box.global_position.x - 1.0, inside_point.y),
+		Vector2(inside_point.x, game.card_box.get_global_rect().end.y + 1.0)]:
+		game._update_card_drag_pose(outside_point, Vector2.ZERO)
+		check(game._card_drag_neighbor_offset(neighbor).is_zero_approx(),
+			"Hand cards do not yield when the drag pointer leaves the hand boundary")
+	game._update_card_drag_pose(inside_point, Vector2.ZERO)
+	check(game._card_drag_neighbor_offset(neighbor).x < -0.5,
+		"Hand avoidance resumes when the drag re-enters the hand")
+	game._finish_card_pointer(drag_point)
+	check(not game._card_dragging and not drag_info.get("dragging", false), "Releasing the pointer exits drag state")
+	game._update_card_hover(1.0 / 60.0, Vector2(-1000, -1000))
+	var return_spring: Node = drag_panel.get_node_or_null("MotionSpring_position")
+	check(return_spring != null and return_spring.target.is_equal_approx(drag_info.base_pos), "Dragged card springs back to its fan anchor")
+	var neighbor_spring: Node = neighbor.panel.get_node_or_null("MotionSpring_position")
+	check(neighbor_spring != null and neighbor_spring.target.is_equal_approx(neighbor.base_pos), "Neighbour spring target returns to the original fan")
+	var before_reorder: int = game.card_infos.find(drag_info)
+	game._card_press_panel = drag_panel
+	game._start_card_drag()
+	var far_right: Vector2 = game.card_box.global_position + Vector2(game.card_box.size.x - 8.0, game.card_box.size.y * 0.55)
+	game._update_card_drag_pose(far_right, Vector2(45, 0))
+	game._finish_card_pointer(far_right)
+	check(game.card_infos.back().panel == drag_panel and game.card_infos.find(drag_info) > before_reorder,
+		"Dropping a card over a new hand slot changes its position in the hand")
+	game._update_card_hover(1.0 / 60.0, Vector2(-1000, -1000))
+	return_spring = drag_panel.get_node_or_null("MotionSpring_position")
+	check(return_spring != null and return_spring.target.is_equal_approx(drag_info.base_pos), "Reordered card springs toward its new fan slot")
+	var queue_a: Dictionary = game.card_infos[0]
+	var queue_b: Dictionary = game.card_infos[1]
+	var queue_drop: Vector2 = Vector2(game.card_box.global_position.x + game.card_box.size.x * 0.5,
+		game.card_box.global_position.y - 110.0)
+	for queued in [queue_a, queue_b]:
+		var queued_panel: PanelContainer = queued.panel
+		game._card_press_panel = queued_panel
+		game._start_card_drag()
+		game._update_card_drag_pose(queue_drop, Vector2(0, -40))
+		var poses_before_drop: Dictionary = {}
+		for remaining in game.card_infos:
+			if remaining.panel != queued_panel and not remaining.get("staged_by_drag", false):
+				var moving_spring = remaining.panel.get_node_or_null("MotionSpring_position")
+				poses_before_drop[remaining.panel] = {"position": remaining.panel.position,
+					"rotation": remaining.panel.rotation,
+					"velocity": moving_spring.velocity if moving_spring != null else Vector2.ZERO}
+		game._finish_card_pointer(queue_drop)
+		var reflow_probe: Dictionary = {}
+		var largest_reflow := 0.0
+		for remaining in game.card_infos:
+			if not poses_before_drop.has(remaining.panel):
+				continue
+			var old_pose: Dictionary = poses_before_drop[remaining.panel]
+			check(remaining.panel.position.is_equal_approx(old_pose.position)
+				and is_equal_approx(remaining.panel.rotation, old_pose.rotation),
+				"Playing a card preserves remaining hand poses on the release frame")
+			var reflow_spring = remaining.panel.get_node_or_null("MotionSpring_position")
+			check(reflow_spring != null and reflow_spring.velocity.is_equal_approx(old_pose.velocity),
+				"Consecutive card plays preserve the current hand reflow momentum")
+			var gap: float = remaining.panel.position.distance_to(remaining.base_pos)
+			if gap > largest_reflow:
+				largest_reflow = gap
+				reflow_probe = remaining
+		check(largest_reflow > 5.0, "Hand reflow starts away from its destination instead of snapping there")
+		await settle(0.08)
+		var intermediate_gap: float = reflow_probe.panel.position.distance_to(reflow_probe.base_pos)
+		check(intermediate_gap > 0.5 and intermediate_gap < largest_reflow,
+			"Hand cards visibly travel through intermediate positions while gathering")
+	var queued_order: Array = game._ordered_staged_indices()
+	check(queued_order.size() == 2 and game.card_infos[queued_order[0]] == queue_a
+		and game.card_infos[queued_order[1]] == queue_b, "Settlement queue follows the order cards were dropped onto the table")
+	check(not game._score_animating, "Queued cards wait for the existing execute action button")
+	# Fast consecutive releases retain real spring momentum. Wait for the
+	# bounded convergence rather than treating a fixed 450 ms as exact rest.
+	var reflow_deadline := Time.get_ticks_msec() + 1000
+	while Time.get_ticks_msec() < reflow_deadline:
+		var converged := true
+		for remaining in game.card_infos:
+			if not remaining.get("staged_by_drag", false) and remaining.panel.position.distance_to(remaining.base_pos) >= 1.0:
+				converged = false
+		if converged: break
+		await get_tree().process_frame
+	for remaining in game.card_infos:
+		if not remaining.get("staged_by_drag", false):
+			check(remaining.panel.position.distance_to(remaining.base_pos) < 1.0,
+				"Hand reflow settles into the new fan without persistent drift")
+	check(is_zero_approx(queue_a.panel.rotation) and is_zero_approx(queue_b.panel.rotation),
+		"Staged table cards settle parallel instead of keeping fan angles")
+	check(queue_a.panel.scale.is_equal_approx(Vector2.ONE)
+		and queue_b.panel.scale.is_equal_approx(Vector2.ONE),
+		"Staged table cards keep the normal hand-card size")
+	check(queue_a.panel.z_index == 100 + int(queue_a.stage_order)
+		and queue_b.panel.z_index == 100 + int(queue_b.stage_order),
+		"Newly staged cards render above earlier queue slots")
+	var staged_slot: Vector2 = queue_a.base_pos
+	var other_slot: Vector2 = queue_b.base_pos
+	game._card_press_panel = queue_a.panel
+	game._start_card_drag()
+	var reorder_point: Vector2 = queue_drop + Vector2(150.0, 0.0)
+	game._update_card_drag_pose(reorder_point, Vector2(30.0, 0.0))
+	for hand_entry in game.card_infos:
+		if not hand_entry.get("staged_by_drag", false):
+			check(game._card_drag_neighbor_offset(hand_entry).is_zero_approx(),
+				"Reordering staged cards does not activate hand avoidance")
+	check(is_equal_approx(queue_b.base_pos.y, -198.0),
+		"The staged row is raised above the hand boundary")
+	var avoid_spring = queue_b.panel.get_node_or_null("MotionSpring_position")
+	check(avoid_spring != null and avoid_spring.target.is_equal_approx(staged_slot),
+		"Table neighbours spring into the vacated slot during a drag")
+	check(int(queue_a.stage_order) == 0 and int(queue_b.stage_order) == 1,
+		"Drag preview keeps committed table order until release")
+	check(queue_a.panel.z_index > queue_b.panel.z_index,
+		"Dragged table card renders above its avoiding neighbours")
+	game._update_card_drag_pose(game.card_box.global_position + Vector2(0.0, 300.0), Vector2.ZERO)
+	check(avoid_spring.target.is_equal_approx(other_slot),
+		"Leaving the table restores neighbours to their committed slots")
+	game._update_card_drag_pose(reorder_point, Vector2.ZERO)
+	game._finish_card_pointer(reorder_point)
+	check(int(queue_a.stage_order) == 1 and int(queue_b.stage_order) == 0,
+		"Releasing commits the insertion order shown by the preview")
+	await settle(0.45)
+	staged_slot = queue_a.base_pos
+	var staged_order_before_sort: int = int(queue_a.stage_order)
+	await probe_hand_sort()
+	check(queue_a.stage_order == staged_order_before_sort and queue_a.base_pos.is_equal_approx(staged_slot),
+		"Hand sorting leaves staged cards in their table slots")
+	var staged_mouse: Vector2 = game._card_gyro_center(queue_a.panel) + Vector2(28.0, -20.0)
+	for frame in 16:
+		game._update_card_hover(0.05, staged_mouse)
+	var staged_material := queue_a.panel.material as ShaderMaterial
+	var pressure_hand: Control
+	for entry in game.card_infos:
+		if not entry.get("staged_by_drag", false):
+			pressure_hand = entry.panel
+			break
+	var hand_pressure_point: Vector2 = pressure_hand.get_global_transform() * (pressure_hand.size * Vector2(0.75, 0.25))
+	var staged_pressure_point: Vector2 = queue_a.panel.get_global_transform() * (queue_a.panel.size * Vector2(0.75, 0.25))
+	var hand_pressure: Vector2 = game._card_gyro_target(pressure_hand, hand_pressure_point, true, true)
+	var staged_pressure: Vector2 = game._card_gyro_target(queue_a.panel, staged_pressure_point, true, true)
+	check(hand_pressure.is_equal_approx(staged_pressure) and staged_pressure.is_equal_approx(Vector2(-0.16, 0.16)),
+		"Hand and staged card faces apply equal gyro pressure despite fan rotation and hover size")
+	check(game._card_gyro_target(queue_a.panel, staged_pressure_point, false, true).is_zero_approx(),
+		"Staged gyro pressure returns to level outside its face")
+	check(absf(float(staged_material.get_shader_parameter("tilt_x"))) > 0.02
+		and absf(float(staged_material.get_shader_parameter("tilt_y"))) > 0.02,
+		"Staged cards keep pointer-driven gyro tilt")
+	game._update_card_hover(1.0 / 60.0, Vector2(-1000.0, -1000.0))
+	await settle(0.4)
+	for queued in [queue_a, queue_b]:
+		var queued_panel: PanelContainer = queued.panel
+		var return_point: Vector2 = game.card_box.global_position + Vector2(game.card_box.size.x * 0.5, game.card_box.size.y * 0.6)
+		game._card_press_panel = queued_panel
+		game._start_card_drag()
+		game._update_card_drag_pose(return_point, Vector2(0, 50))
+		game._finish_card_pointer(return_point)
+	var duplicate_id: String = str(game.current_hand[0].id)
+	var metrics_before_dispatch: Dictionary = GameState.metrics.duplicate(true)
+	GameState.dispatched_cards = [{"card_id": duplicate_id, "tier": "effective"}]
+	game._sync_dispatched_stage_cards()
+	var dispatched_entry: Dictionary = {}
+	for entry in game.card_infos:
+		if entry.get("dispatched", false) and str(entry.card_id) == duplicate_id:
+			dispatched_entry = entry
+			break
+	check(not dispatched_entry.is_empty() and dispatched_entry.get("staged_by_drag", false),
+		"Urgent dispatch immediately appears in the pending table row")
+	await get_tree().process_frame
+	check(dispatched_entry.panel.size.is_equal_approx(Vector2(122.0, 165.0)),
+		"Urgent dispatch uses the same card footprint as a hand card")
+	game._card_press_panel = dispatched_entry.panel
+	game._start_card_drag()
+	check(game._card_dragging, "Urgent dispatch cards can enter the normal drag state")
+	game._update_card_drag_pose(queue_drop, Vector2(0.0, -24.0))
+	game._finish_card_pointer(queue_drop)
+	check(dispatched_entry.get("staged_by_drag", false),
+		"Dragging an urgent dispatch keeps it in the ordered table queue")
+	check(GameState.metrics == metrics_before_dispatch, "Dispatch staging does not apply its card before settlement")
+	game.save_game()
+	var save_file := FileAccess.open("user://savegame.json", FileAccess.READ)
+	var saved: Dictionary = JSON.parse_string(save_file.get_as_text())
+	save_file.close()
+	var saved_hand_occurrences := 0
+	for saved_id in saved.hand_ids:
+		if str(saved_id) == duplicate_id:
+			saved_hand_occurrences += 1
+	check(saved_hand_occurrences == 1 and saved.staged_queue.size() == 1
+		and bool(saved.staged_queue[0].dispatched), "Save keeps the dispatched copy separate from the hand and preserves its queue marker")
+	GameState.dispatched_cards = []
+	if not dispatched_entry.is_empty():
+		game.card_infos.erase(dispatched_entry)
+		dispatched_entry.panel.queue_free()
+		game._layout_fan()
+	game._clear_save()
+	await settle(0.5)
+	var shake_base: Vector2 = click_panel.position
+	var shake_rotation: float = click_panel.rotation
+	game._reject_card(click_panel, "测试拒绝反馈")
+	var previous_shake_pos: Vector2 = click_panel.position
+	var shake_max_step := 0.0
+	var shake_max_travel := 0.0
+	for frame in 18:
+		await get_tree().process_frame
+		shake_max_step = maxf(shake_max_step, click_panel.position.distance_to(previous_shake_pos))
+		shake_max_travel = maxf(shake_max_travel, click_panel.position.distance_to(shake_base))
+		previous_shake_pos = click_panel.position
+	check(shake_max_travel > 3.0 and shake_max_step < 8.0, "Rejected-card feedback moves continuously without abrupt shake steps")
+	await settle(0.55)
+	check(click_panel.position.is_equal_approx(shake_base) and is_equal_approx(click_panel.rotation, shake_rotation),
+		"Rejected card settles exactly back to its original pose")
 	game._open_deck_viewer()
 	await settle(1.8)
 	var action_view := await probe_grid(game.deck_viewer_grid, "gyro-deck")
 	game._show_card_detail(action_view, action_view.get_meta("card"))
+	check(is_zero_approx(action_view.modulate.a), "Detail carry leaves only one visible action-card face")
+	check(game._detail_big_card.scale.is_equal_approx(action_view.scale), "Detail starts from the source's current hover scale")
 	await settle(0.6)
 	await probe_detail(game._detail_big_card, "gyro-action-detail")
 	await verify_detail_clicks(game.card_detail, game._detail_big_card, game._on_card_detail_dim_input)
 	game._close_card_detail()
+	check(is_equal_approx(action_view.modulate.a, 1.0), "Closing action detail restores its source")
+	game.wetland.reduced_motion = true
+	game._show_card_detail(action_view, action_view.get_meta("card"))
+	check(game._detail_big_card.scale.is_equal_approx(Vector2(1.8, 1.8)), "Reduced motion opens the detail at its final scale immediately")
+	check(game.card_detail_body.visible_characters == -1, "Reduced motion reveals readable detail text immediately")
+	game._close_card_detail()
+	check(is_equal_approx(action_view.modulate.a, 1.0), "Reduced-motion close restores its source")
+	game.wetland.reduced_motion = false
 	game._close_deck_viewer()
 	await settle(0.5)
 	game._open_dispatch_panel()
@@ -268,17 +532,117 @@ func _ready() -> void:
 	await probe_grid(game.knowledge_grid, "gyro-knowledge-locked")
 	var knowledge_view: Control = game.knowledge_grid.get_child(8)
 	game._show_knowledge_detail(knowledge_view, "geo_poyang")
+	check(is_zero_approx(knowledge_view.modulate.a), "Knowledge detail carries a single card face")
 	await settle(0.6)
 	await probe_detail(game._knowledge_big_card, "gyro-knowledge-detail")
 	get_window().size = Vector2i(960, 540)
 	game._close_knowledge_detail()
+	check(is_equal_approx(knowledge_view.modulate.a, 1.0), "Knowledge detail restores its source across a resize")
 	await settle(0.5)
 	game._show_knowledge_detail(knowledge_view, "geo_poyang")
 	await settle(0.6)
 	await probe_detail(game._knowledge_big_card, "gyro-knowledge-small")
 	await verify_detail_clicks(game.knowledge_detail, game._knowledge_big_card, game._on_knowledge_detail_dim_input)
+	var hud_home := Vector4(game.bottom_right.offset_left, game.bottom_right.offset_top,
+		game.bottom_right.offset_right, game.bottom_right.offset_bottom)
+	for cycle in 2:
+		game._slide_main_ui(true)
+		await settle(0.4)
+		game._slide_main_ui(false)
+		await settle(0.4)
+	check(Vector4(game.bottom_right.offset_left, game.bottom_right.offset_top,
+		game.bottom_right.offset_right, game.bottom_right.offset_bottom).is_equal_approx(hud_home),
+		"Repeated HUD slide cycles restore the bottom-right controls to their fixed anchor")
+	await probe_bottom_right_bounds()
+	var locked_info: Dictionary = game.card_infos[0]
+	locked_info["staged_by_drag"] = true
+	locked_info["selected"] = true
+	locked_info["stage_order"] = 0
+	var locked_panel: PanelContainer = locked_info.panel
+	game._layout_fan()
+	await settle(0.9)
+	var locked_position: Vector2 = locked_panel.position
+	var locked_alpha: float = locked_panel.modulate.a
+	game.current_hand = GameState.draw_cards(3)
+	game.play_deal_anim = true
+	game._build_hand_panel(true)
+	check(game.card_infos.has(locked_info) and is_instance_valid(locked_panel)
+		and locked_info.get("staged_by_drag", false),
+		"Refreshing the hand preserves already-staged cards on the table")
+	var max_locked_alpha_change := 0.0
+	var max_locked_motion := 0.0
+	var refresh_end := Time.get_ticks_msec() + 600
+	while Time.get_ticks_msec() < refresh_end:
+		await get_tree().process_frame
+		max_locked_alpha_change = maxf(max_locked_alpha_change, absf(locked_panel.modulate.a - locked_alpha))
+		max_locked_motion = maxf(max_locked_motion, locked_panel.position.distance_to(locked_position))
+	check(max_locked_alpha_change < 0.001 and max_locked_motion < 0.1,
+		"Refreshing animates only new hand cards; staged cards never flash or redeal")
 	print("CARD_GYRO: %d checks, %d failures" % [checks, failures.size()])
 	get_tree().quit(0 if failures.is_empty() else 1)
+
+func probe_bottom_right_bounds() -> void:
+	var old_window: Vector2i = get_window().size
+	var old_label: String = game.selected_label.text
+	var old_dispatch: String = game.dispatch_btn.text
+	for window_size in [Vector2i(1280, 720), Vector2i(960, 540), Vector2i(960, 720), Vector2i(1600, 720)]:
+		get_window().size = window_size
+		for long_text in [true, false]:
+			game.selected_label.text = "桌面待打出：12 张\n行动位 12/12 · 预算 12345/10000 万\n资金不足，请调整待打出卡牌的顺序和投入档位" if long_text else "拖牌到上方桌面待打出"
+			game.dispatch_btn.text = "紧急调度 · 400 万（含待打出预算不足）" if long_text else "紧急调度 · 40 万"
+			await settle(0.12)
+			check_bottom_right_bounds("Content change")
+			game._slide_main_ui(true)
+			await settle(0.1)
+			game._slide_main_ui(false)
+			await settle(0.45)
+			check_bottom_right_bounds("Interrupted HUD return")
+	get_window().size = old_window
+	game.selected_label.text = old_label
+	game.dispatch_btn.text = old_dispatch
+	await settle(0.2)
+
+func check_bottom_right_bounds(context: String) -> void:
+	var screen: Rect2 = get_viewport().get_visible_rect()
+	var rect: Rect2 = game.bottom_right.get_global_rect()
+	check(rect.position.x >= screen.position.x and rect.position.y >= screen.position.y
+		and rect.end.x <= screen.end.x - 17.0 and rect.end.y <= screen.end.y - 13.0,
+		context + " keeps the growing action container inside its screen margins")
+	for button in [game.hand_sort_btn, game.dispatch_btn, game.refresh_btn, game.end_turn_btn]:
+		var button_rect: Rect2 = button.get_global_rect()
+		check(screen.encloses(button_rect), context + " keeps every bottom-right button fully on screen")
+
+func probe_hand_sort() -> void:
+	await settle(0.5)
+	var hand: Array = []
+	var staged: Array = []
+	for info in game.card_infos:
+		if info.get("staged_by_drag", false):
+			staged.append({"panel": info.panel, "position": info.panel.position, "alpha": info.panel.modulate.a})
+		else:
+			hand.append({"panel": info.panel, "z": info.panel.z_index})
+	var back: Control = game.deck_backs.back()
+	var deck_center: Vector2 = back.get_global_transform() * (back.size * 0.5)
+	var expected_scale: Vector2 = back.size / Vector2(122.0, 165.0)
+	game._sort_animating = true
+	game._sort_hand_cards(false)
+	await settle(game.Motion.seconds("gather") + float(hand.size() - 1) * game.Motion.stagger("gather", 1) + 0.03)
+	for entry in hand:
+		var panel: Control = entry.panel
+		var center: Vector2 = panel.get_global_transform() * (panel.size * 0.5)
+		check(center.distance_to(deck_center) < float(hand.size()) + 2.0,
+			"Sorting gathers cards at the right-side deck UI instead of above the table")
+		check(panel.scale.distance_to(expected_scale) < 0.01,
+			"Sorting shrinks hand cards to the deck back size before redealing")
+		check(panel.z_index >= 1000, "Sorting cards stay above staged cards during their carry")
+	await settle(0.08 + game.Motion.seconds("deal") + float(hand.size() - 1) * game.Motion.stagger("deal", 1) + 0.1)
+	game._sort_animating = false
+	for entry in hand:
+		check(entry.panel.scale.is_equal_approx(Vector2.ONE) and entry.panel.z_index == entry.z,
+			"Sorted cards return to full hand size and their original draw layer")
+	for entry in staged:
+		check(entry.panel.position.distance_to(entry.position) < 0.1 and is_equal_approx(entry.panel.modulate.a, entry.alpha),
+			"Deck-based hand sorting leaves staged card poses and opacity untouched")
 
 func verify_detail_clicks(detail: Control, big: Control, handler: Callable) -> void:
 	var click := InputEventMouseButton.new()

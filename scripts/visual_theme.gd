@@ -1,4 +1,6 @@
 extends RefCounted
+
+const Motion = preload("res://scripts/motion.gd")
 ## Shared presentation tokens. No gameplay state is changed here.
 const INK := Color("303e49")
 const PANEL := Color("44565c")
@@ -52,6 +54,7 @@ static func illustration(card: Dictionary) -> AtlasTexture:
 	return atlas
 
 static func style_button(b: Button, danger: bool = false, primary: bool = false) -> void:
+	preload("res://scripts/motion_button.gd").attach(b)
 	var base := Color("895e59") if danger else PANEL
 	var accent := Color("efb7a1") if danger else MINT
 	if primary:
@@ -76,7 +79,6 @@ static func style_button(b: Button, danger: bool = false, primary: bool = false)
 static func button_feedback(b: Button, active: bool) -> void:
 	var previous: Tween = b.get_meta("feedback_tween") if b.has_meta("feedback_tween") else null
 	if previous and previous.is_valid(): previous.kill()
-	var tw := b.create_tween()
+	var tw := Motion.tween(b, "response", "feedback")
 	b.set_meta("feedback_tween", tw)
-	tw.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tw.tween_property(b, "modulate", Color(1.09, 1.09, 1.04) if active else Color.WHITE, 0.14)

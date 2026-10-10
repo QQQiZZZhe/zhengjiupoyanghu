@@ -8,7 +8,7 @@ extends Node
 ## user://savegame.json（那个是单局进度，删档重开依然在）。
 ## 判负重来、中途退出、重开一局，已收集的知识卡都不会掉。
 ##
-## 知识卡数据本体仍旧在 GameState.KNOWLEDGE_CARDS（定义顺序 = 图鉴顺序）；
+## 知识卡数据本体仍旧在 GameState.KNOWLEDGE_CARDS（图鉴按美术分类排列）；
 ## 这里只管「收没收到」。游戏里那张卡真的弹到玩家面前时（main.gd 的 _show_knowledge）
 ## 调 unlock()，主页图鉴就能点亮它。
 
@@ -67,12 +67,13 @@ func collected_count() -> int:
 	return n
 
 
-## 全部知识卡的 id，按 GameState 里的定义顺序。
-## Dictionary 保序 → 图鉴的排列永远稳定，加新卡只改 GameState 那一处。
+## 图鉴按美术分类排列；类内沿用定义顺序，彩蛋置于末尾。
 func all_ids() -> Array:
 	var out: Array = []
-	for card_id in GameState.KNOWLEDGE_CARDS:
-		out.append(str(card_id))
+	for category in GameState.KNOWLEDGE_CATEGORIES + ["彩蛋"]:
+		for card_id in GameState.KNOWLEDGE_CARDS:
+			if str(GameState.KNOWLEDGE_CARDS[card_id]["category"]) == category:
+				out.append(str(card_id))
 	return out
 
 

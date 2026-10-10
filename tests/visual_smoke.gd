@@ -217,23 +217,23 @@ func _ready() -> void:
 	for site in game.wetland.house_sites:
 		check(game.wetland._is_land(site) and game.wetland._near_water(site), "Cottage must be on near-shore land")
 		check(site.distance_to(game.wetland.CREEPER_ANCHOR) > 0.11, "Cottage covers Creeper clearing")
-	var original_settlement: float = GameState.settlement
-	GameState.settlement = 100.0
+	# The village now follows community trust across all shoreline sites; land
+	# reclamation strength no longer sets a seven-house cap.
+	var original_community: int = int(GameState.metrics.community)
+	GameState.metrics.community = 100
 	GameState.metrics_changed.emit()
 	await settle(0.25)
-	check(game.wetland.house_target_count == 7, "Settlement must keep the old maximum of seven cottages")
-	check(game.wetland.house_progress[6] > 0.0, "Expansion must animate construction")
+	check(game.wetland.house_target_count == game.wetland.house_sites.size(), "Full community trust must use all shoreline cottage sites")
+	check(game.wetland.house_progress[game.wetland.house_sites.size() - 1] > 0.0, "Expansion must animate construction")
 	game._score_animating = true
-	GameState.settlement = 0.0
+	GameState.metrics.community = 0
 	GameState.metrics_changed.emit()
-	check(game.wetland.house_target_count == 7, "Scenery must stay frozen during score reveal")
+	check(game.wetland.house_target_count == game.wetland.house_sites.size(), "Scenery must stay frozen during score reveal")
 	game._score_animating = false
 	game._update_3d()
-	GameState.settlement = 0.0
-	GameState.metrics_changed.emit()
 	await settle(0.25)
-	check(game.wetland.house_progress[0] < 1.0, "Wetland recovery must animate cottage removal")
-	GameState.settlement = original_settlement
+	check(game.wetland.house_target_count == 0 and game.wetland.house_progress[0] < 1.0, "Community decline must animate cottage removal after score reveal")
+	GameState.metrics.community = original_community
 	GameState.metrics_changed.emit()
 	game._pause_game()
 	await settle(0.1)
@@ -292,14 +292,14 @@ func _ready() -> void:
 	var before_funds: int = GameState.funds
 	var info: Dictionary = game.card_infos[0]
 	game._set_play_tier("basic", false)
-	game._toggle_card(info.panel)
+	preload("res://tests/card_input.gd").drop_on_board(game, info)
 	var locked_tier: String = info.tier
 	game._set_play_tier("deep", false)
 	check(info.tier == locked_tier, "Changing lever must preserve selected card tier")
 	check(GameState.funds == before_funds and GameState.metrics == before, "Selecting cards must not spend/apply effects")
 	await settle()
 	await capture("04-selected")
-	game._toggle_card(info.panel)
+	preload("res://tests/card_input.gd").retract(game, info)
 	game._set_play_tier("effective", false)
 	game._open_deck_viewer()
 	await settle(1.8)
@@ -347,7 +347,7 @@ func _ready() -> void:
 	game._resume_game()
 	# Resolve an actual turn, including the existing score choreography.
 	game._set_play_tier("basic", false)
-	game._toggle_card(game.card_infos[0].panel)
+	preload("res://tests/card_input.gd").drop_on_board(game, game.card_infos[0])
 	var turn_before: int = GameState.turn
 	game._finish_turn()
 	await settle(1.0)

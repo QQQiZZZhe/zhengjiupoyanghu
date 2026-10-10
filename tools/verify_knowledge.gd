@@ -35,11 +35,12 @@ func _initialize() -> void:
 		backup = f.get_as_text()
 		f.close()
 
-	# ① 数据源：40 张知识卡，字段齐全，旧卡顺序稳定
+	# ① 数据源：知识卡数量与字典一致，旧知识卡顺序稳定（彩蛋卡排在最前面）
 	var ids: Array = K.all_ids()
-	_check(ids.size() == 40, "知识卡应为 40 张，实际 %d" % ids.size())
+	_check(ids.size() == GS.KNOWLEDGE_CARDS.size(), "知识卡数量应与数据源一致，实际 %d / %d" % [ids.size(), GS.KNOWLEDGE_CARDS.size()])
 	var legacy := ["plant_kucao", "bird_baihe", "bird_xiaotiane", "bird_dongfang", "mech_water_quality", "mech_fushouluo", "cons_disease", "cons_compensate"]
-	_check(ids.slice(0, 8) == legacy, "原有 8 张知识卡的 id 与顺序不变")
+	var ids_without_easter_egg: Array = ids.filter(func(kid): return str(kid) != "egg_dixinhu")
+	_check(ids_without_easter_egg.slice(0, 8) == legacy, "原有 8 张知识卡的 id 与顺序不变（排除开头的彩蛋卡）")
 	var action_ids := {}
 	var tags := {}
 	for action in GS.ACTION_CARDS:
@@ -53,7 +54,7 @@ func _initialize() -> void:
 		for field in required:
 			_check(GS.KNOWLEDGE_CARDS[kid].has(field), "知识卡 %s 缺字段 %s" % [kid, field])
 		var card: Dictionary = GS.KNOWLEDGE_CARDS[kid]
-		if kid in legacy:
+		if kid in legacy or kid == "egg_dixinhu":
 			continue
 		_check(not str(card.get("source_title", "")).is_empty(), "%s 应有来源标题" % kid)
 		_check(str(card.get("source_url", "")).begins_with("https://"), "%s 应有 HTTPS 来源" % kid)
